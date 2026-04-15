@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "High-performance deep merge utility with structural sharing",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,7 +15,7 @@
   },
   "files": ["dist", "LICENSE", "README.md"],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "build": "tsc",
     "test": "bun test",
     "prepublishOnly": "npm run build && npm test",
     "lint": "tsc --noEmit"
