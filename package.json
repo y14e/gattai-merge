@@ -1,0 +1,42 @@
+{
+  "name": "gattai-merge",
+  "version": "1.0.0",
+  "description": "High-performance deep merge utility with structural sharing",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "LICENSE", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "test": "bun test",
+    "prepublishOnly": "npm run build && npm test",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": ["merge", "deep", "clone", "immutable", "typescript"],
+  "author": "Yusuke Kamiyamane",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/y14e/gattai-merge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/y14e/gattai-merge/issues"
+  },
+  "homepage": "https://github.com/y14e/gattai-merge#readme",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.0",
+    "bun-types": "latest"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

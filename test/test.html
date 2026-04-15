@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deep Merge Comparison</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin: 24px; background: #0b0c0f; color: #e6e6; }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    p { color: #9aa0a6; margin-top: 0; }
+    table { border-collapse: collapse; width: 100%; margin-top: 16px; font-size: 13px; }
+    th, td { border: 1px solid #2a2d31; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #14161a; position: sticky; top: 0; }
+    tr:nth-child(even) td { background: #0f1115; }
+   .pass { color: #4ade80; font-weight: 700; }
+   .fail { background: #300 !important; color: #f87171; font-weight: 700; }
+   .skip { color: #fbbf24; font-weight: 700; }
+   .error { color: #fca5a5; font-style: italic; }
+    code { background: #1a1d22; padding: 2px 4px; border-radius: 4px; }
+   .controls { margin: 12px 0; display: flex; gap: 8px; align-items: center; }
+    button { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    details { margin-top: 6px; }
+    summary { cursor: pointer; color: #93c5fd; }
+   .legend { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: #9aa0a6; }
+   .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  </style>
+  <!-- lodash と deepmerge を CDN から読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+  <script type="module">
+    import deepmerge from 'https://cdn.jsdelivr.net/npm/deepmerge@4.3.1/+esm';
+    window.deepmerge = deepmerge;
+  </script>
+</head>
+<body>
+  <h1>gattaiMerge vs deepmerge vs lodash.merge</h1>
+  <p>3つの実装で同じ入力を与えて結果を比較。PASS = JSON.stringify が期待値と一致。</p>
+  <div class="controls">
+    <button id="run">再実行</button>
+    <div class="legend">
+      <span><b class="pass">PASS</b> 一致</span>
+      <span><b class="fail">FAIL</b> 不一致</span>
+      <span><b class="skip">SKIP</b> 実装非対応</span>
+    </div>
+  <table id="results">
+    <thead>
+      <tr>
+        <th style="width: 22%">Test</th>
+        <th style="width: 13%">gattaiMerge</th>
+        <th style="width: 13%">deepmerge</th>
+        <th style="width: 13%">lodash.merge</th>
+        <th>詳細</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script type="module">
+    // ========== あなたの実装をここに貼り付け ==========
+    import { gattaiMerge } from './merge-object-deep.js';
+
+    const $tbody = document.querySelector('#results tbody');
+
+    function stableStringify(obj) {
+      const seen = new WeakMap();
+      let id = 0;
+      return JSON.stringify(obj, (_, v) => {
+        if (typeof v === 'object' && v!== null) {
+          if (v instanceof Date) return {$date: v.toISOString()};
+          if (v instanceof RegExp) return {$regexp: v.toString()};
+          if (v instanceof Map) return {$map: Array.from(v.entries()).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))};
+          if (v instanceof Set) return {$set: Array.from(v.values()).sort()};
+          if (v instanceof Error) return {$error: {name: v.name, message: v.message}}; // stack無視
+          if (seen.has(v)) return `[Circular:${seen.get(v)}]`; // ID付きで一意にする
+          seen.set(v, id++);
+          if (!Array.isArray(v)) {
+            return Object.keys(v).sort().reduce((acc, k) => { acc[k] = v[k]; return acc; }, {});
+          }
+        }
+        if (typeof v === 'function') return `[Function:${v.name || 'anon'}]`;
+        if (typeof v === 'symbol') return v.toString();
+        if (typeof v === 'undefined') return '[undefined]';
+        return v;
+      }, 2);
+    }
+
+    function runFn(fn, label) {
+      try {
+        return { ok: true, value: fn() };
+      } catch (e) {
+        return { ok: false, error: e.message, label };
+      }
+    }
+
+    const tests = [
+      { name: '基本: オブジェクト上書き', run: () => {
+        const a = {x: 1, y: {z: 2}}; const b = {y: {z: 3}, w: 4};
+        return { input: [a,b], expected: {x:1,y:{z:3},w:4},
+          ours: () => gattaiMerge({...a}, [b]),
+          deepmerge: () => window.deepmerge({...a}, b),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: '配列 replace', run: () => {
+        const a = {arr: [1,2]}; const b = {arr: [3]};
+        return { input: [a,b], expected: {arr:[3]},
+          ours: () => gattaiMerge({...a}, [b], {arrays:'replace'}),
+          deepmerge: () => window.deepmerge({...a}, b),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: '配列 concat', run: () => {
+        const a = {arr: [1]}; const b = {arr: [2,3]};
+        return { input: [a,b], expected: {arr:[1,2,3]},
+          ours: () => gattaiMerge({...a}, [b], {arrays:'concat'}),
+          deepmerge: () => window.deepmerge({...a}, b, {arrayMerge:(t,s)=>t.concat(s)}),
+          lodash: () => _.mergeWith({}, a, b, (o,s) => Array.isArray(o)? o.concat(s): undefined) };
+      }},
+      { name: '配列 merge: 要素単位', run: () => {
+        const a = {arr: [{n:1},{m:2}]}; const b = {arr: [{n:10},{k:3}]};
+        return { input: [a,b], expected: {arr:[{n:10},{m:2,k:3}]},
+          ours: () => gattaiMerge({...a}, [b], {arrays:'merge'}),
+          deepmerge: () => 'SKIP',
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: '配列 merge: 長さが短くなる', run: () => {
+        const a = {arr: [1,2,3]}; const b = {arr: [9]};
+        return { input: [a,b], expected: {arr:[9,2,3]},
+          ours: () => gattaiMerge({...a}, [b], {arrays:'merge'}),
+          deepmerge: () => 'SKIP',
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: 'Map マージ', run: () => {
+        const a = {m: new Map([['a',1],['c',{x:1}]])}; const b = {m: new Map([['b',2],['c',{y:2}]])};
+        const exp = {m: new Map([['a',1],['b',2],['c',{x:1,y:2}]])};
+        return { input: [a,b], expected: exp,
+          ours: () => gattaiMerge({m:new Map(a.m)}, [b], {descriptors:true}),
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: 'Set マージ', run: () => {
+        const a = {s: new Set([1,2])}; const b = {s: new Set([2,3])};
+        return { input: [a,b], expected: {s: new Set([1,2,3])},
+          ours: () => gattaiMerge({s:new Set(a.s)}, [b], {descriptors:true}),
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: 'Date/RegExp', run: () => {
+        const d = new Date('2026-01-01T00:00:00Z'); const r = /test/gi;
+        const a = {d,r}; const b = {x:1};
+        return { input: [a,b], expected: {d,r,x:1},
+          ours: () => gattaiMerge({}, [a,b]),
+          deepmerge: () => window.deepmerge({}, window.deepmerge(a,b)),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: 'TypedArray', run: () => {
+        const a = {v: new Uint8Array([1,2])}; const b = {v: new Uint8Array([3])};
+        return { input: [a,b], expected: {v: new Uint8Array([3])},
+          ours: () => gattaiMerge({}, [a,b]),
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: 'Error オブジェクト', run: () => {
+        const e1 = new Error('first'); e1.name = 'TypeError';
+        const e2 = new Error('second');
+        const a = {err: e1}; const b = {err: e2};
+        return { input: [a,b], expected: {err: e2},
+          ours: () => gattaiMerge({}, [a,b]),
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: '循環参照', run: () => {
+        const a = {x:1}; a.self = a; const b = {y:2};
+        return { input: ['circular',b], expected: {x:1,y:2,self:'[Circular]'},
+          ours: () => gattaiMerge({...a,self:a}, [b]),
+          deepmerge: () => 'SKIP', lodash: () => _.merge({}, a, b) };
+      }},
+      { name: '循環参照: 相互参照', run: () => {
+        const a = {n:'a'}; const b = {n:'b'}; a.ref=b; b.ref=a;
+        return { input: [a,b], expected: {n:'b',ref:'[Circular]'},
+          ours: () => gattaiMerge({...a,ref:b}, [{...b,ref:a}]),
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: 'プロトタイプ汚染ガード __proto__', run: () => {
+        const a = {}; const b = JSON.parse('{"__proto__": {"polluted": true}}');
+        return { input: [a,b], expected: {},
+          ours: () => gattaiMerge({}, [a,b]),
+          deepmerge: () => window.deepmerge({}, b),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: 'プロトタイプ汚染ガード constructor', run: () => {
+        const a = {}; const b = JSON.parse('{"constructor": {"prototype": {"polluted": true}}}');
+        return { input: [a,b], expected: {},
+          ours: () => gattaiMerge({}, [a,b]),
+          deepmerge: () => window.deepmerge({}, b),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: 'null/undefined 上書き', run: () => {
+        const a = {x:1,y:null,z:undefined}; const b = {x:null,y:2,z:3};
+        return { input: [a,b], expected: {x:null,y:2,z:3},
+          ours: () => gattaiMerge({...a}, [b]),
+          deepmerge: () => window.deepmerge({...a}, b),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: 'undefined は値扱い', run: () => {
+        const a = {x:1}; const b = {x:undefined};
+        return { input: [a,b], expected: {x:undefined},
+          ours: () => gattaiMerge({...a}, [b]),
+          deepmerge: () => window.deepmerge({...a}, b),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: 'function は置換', run: () => {
+        const f1 = function a(){}; const f2 = function b(){};
+        const a = {fn:f1}; const b = {fn:f2};
+        return { input: [a,b], expected: {fn:f2},
+          ours: () => gattaiMerge({}, [a,b]),
+          deepmerge: () => window.deepmerge({}, window.deepmerge(a,b)),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: 'Symbol キー', run: () => {
+        const s = Symbol('test'); const a = {[s]:1}; const b = {[s]:2,x:3};
+        return { input: [a,b], expected: {[s]:2,x:3},
+          ours: () => gattaiMerge({...a}, [b], {descriptors:true}),
+          deepmerge: () => 'SKIP', lodash: () => _.merge({}, a, b) };
+      }},
+      { name: 'getter/setter (descriptors)', run: () => {
+        const a = {}; Object.defineProperty(a, 'x', {get:()=>1, enumerable:true, configurable:true});
+        const b = {x:2};
+        return { input: ['getter',b], expected: {x:2},
+          ours: () => gattaiMerge(a, [b], {descriptors:true}),
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: '非列挙プロパティ (descriptors)', run: () => {
+        const a = {}; Object.defineProperty(a, 'hidden', {value:1, enumerable:false});
+        const b = {x:2};
+        return { input: [a,b], expected: {x:2}, // hiddenは列挙されないので期待値に入れない
+          ours: () => gattaiMerge(a, [b], {descriptors:true}),
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: '空配列 + 空配列', run: () => {
+        const a = {arr:[]}; const b = {arr:[]};
+        return { input: [a,b], expected: {arr:[]},
+          ours: () => gattaiMerge({...a}, [b], {arrays:'merge'}),
+          deepmerge: () => window.deepmerge({...a}, b),
+          lodash: () => _.merge({}, a, b) };
+      }},
+      { name: '複数source', run: () => {
+        const a = {x:1}; const b = {y:2}; const c = {z:3}; const d = {x:4};
+        return { input: [a,b,c,d], expected: {x:4,y:2,z:3},
+          ours: () => gattaiMerge({...a}, [b,c,d]),
+          deepmerge: () => [b,c,d].reduce((acc,cur)=>window.deepmerge(acc,cur), {...a}),
+          lodash: () => _.merge({}, a, b, c, d) };
+      }},
+      { name: 'frozen オブジェクトはエラー', run: () => {
+        const a = Object.freeze({x:1}); const b = {y:2};
+        return { input: [a,b], expected: 'Error',
+          ours: () => { try { gattaiMerge(a, [b]); return 'no-error'; } catch(e) { return 'Error'; } },
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: 'プリミティブをマージ', run: () => {
+        const a = {x:1}; const b = 42;
+        return { input: [a,b], expected: 42,
+          ours: () => gattaiMerge({...a}, [b]),
+          deepmerge: () => 'SKIP', lodash: () => 'SKIP' };
+      }},
+      { name: '深いネスト 5階層', run: () => {
+        const a = {a:{b:{c:{d:{e:1}}}}}; const b = {a:{b:{c:{d:{e:2,f:3}}}}};
+        return { input: [a,b], expected: {a:{b:{c:{d:{e:2,f:3}}}}},
+          ours: () => gattaiMerge({...a}, [b]),
+          deepmerge: () => window.deepmerge({...a}, b),
+          lodash: () => _.merge({}, a, b) };
+      }},
+    ];
+
+
+    function render() {
+      $tbody.innerHTML = '';
+      for (const t of tests) {
+        const {name, run} = t;
+        const {input, expected, ours, deepmerge: dm, lodash: lo} = run();
+        const expStr = stableStringify(expected);
+
+        const results = {
+          ours: ours === 'SKIP'? {skip: true} : runFn(ours, 'gattaiMerge'),
+          deepmerge: dm === 'SKIP'? {skip: true} : runFn(dm, 'deepmerge'),
+          lodash: lo === 'SKIP'? {skip: true} : runFn(lo, 'lodash'),
+        };
+
+        const cells = Object.entries(results).map(([k, r]) => {
+          if (r.skip) return `<td class="skip">SKIP</td>`;
+          if (!r.ok) return `<td class="fail">ERROR<br><span class="error">${r.error}</span></td>`;
+          const got = stableStringify(r.value);
+          const pass = got === expStr;
+          return `<td class="${pass? 'pass' : 'fail'}">${pass? 'PASS' : 'FAIL'}</td>`;
+        });
+
+        const detail = `
+          <details>
+            <summary>入力/期待値/実測値</summary>
+            <div><b>Input:</b> <code>${stableStringify(input)}</code></div>
+            <div><b>Expected:</b> <code>${expStr}</code></div>
+            <div><b>ours:</b> <code>${results.ours.skip? 'SKIP' : results.ours.ok? stableStringify(results.ours.value) : results.ours.error}</code></div>
+            <div><b>deepmerge:</b> <code>${results.deepmerge.skip? 'SKIP' : results.deepmerge.ok? stableStringify(results.deepmerge.value) : results.deepmerge.error}</code></div>
+            <div><b>lodash:</b> <code>${results.lodash.skip? 'SKIP' : results.lodash.ok? stableStringify(results.lodash.value) : results.lodash.error}</code></div>
+          </details>
+        `;
+
+        $tbody.insertAdjacentHTML('beforeend', `
+          <tr>
+            <td>${name}</td>
+            ${cells.join('')}
+            <td>${detail}</td>
+          </tr>
+        `);
+      }
+    }
+
+    document.getElementById('run').onclick = render;
+    window.onload = render;
+
+
+
+    const m1 = new Map();
+    m1.set('undef', undefined);
+    m1.set('obj', { a: 1 });
+
+    const m2 = new Map();
+    m2.set('undef', { x: 1 }); // undefined -> object
+    m2.set('obj', { b: 2 });   // object -> object
+
+    const res = gattaiMerge({}, [m1, m2], { descriptor: true });
+    console.log(res.get('undef')); // {x: 1} になるはずが undefined になる
+    console.log(res.get('obj'));
+</script>
+</body>
+</html>
