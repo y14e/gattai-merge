@@ -24,5 +24,3 @@ const result = gattaiMerge(target, source1, source2, /* ..., */ sourceN, {
 | --- | --- | --- | --- |
 | `arrays` | `'replace' \| 'concat' \| 'merge'` | `'replace'` | Array merge strategy. `replace`: overwrite with source. `concat`: append source. `merge`: deep merge by index. |
 | `preserveDescriptors` | `boolean` | `false` | If `true`, merge property descriptors via `Object.getOwnPropertyDescriptors`. Preserves getters/setters and flags. |
-
-MIT © 2026 Yusuke Kamiyamane
