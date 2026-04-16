@@ -13,14 +13,24 @@
       "require": "./dist/index.js"
     }
   },
-  "files": ["dist", "LICENSE", "README.md"],
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "bun test",
     "prepublishOnly": "npm run build && npm test",
     "lint": "tsc --noEmit"
   },
-  "keywords": ["merge", "deep", "clone", "immutable", "typescript"],
+  "keywords": [
+    "merge",
+    "deep",
+    "clone",
+    "immutable",
+    "typescript"
+  ],
   "author": "Yusuke Kamiyamane",
   "license": "MIT",
   "repository": {
