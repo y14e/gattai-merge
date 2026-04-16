@@ -28,7 +28,7 @@ const result = gattaiMerge(target, source1, source2, /* ..., */ sourceN, {
 ## Performance
 
 | Test | gattai-merge | lodash | deepmerge | Speedup |
-|-----------|--------------|--------|-----------|---------|
+|-----------|--------------:|--------:|-----------:|---------|
 | **Deep 20 levels** (1K keys) | **5,605 ops/s** | 3,434 ops/s | 3,081 ops/s | **1.63x** |
 | **Wide 10K keys** (flat) | **810 ops/s** | 390 ops/s | 346 ops/s | **2.08x** |
 | **Large arrays** (10K items) | **204 ops/s** | 121 ops/s | 109 ops/s | **1.69x** |
