@@ -3,44 +3,32 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular references and complex built-in types.
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
  * @see {@link https://github.com/y14e/gattai-merge}
  */
 
-export interface Option {
+export interface GattaiMergeOptions {
   readonly arrays?: 'replace' | 'concat' | 'merge';
-  readonly descriptors?: boolean;
+  readonly preserveDescriptors?: boolean;
 }
 
 type AnyObject = Record<PropertyKey, unknown>;
 
 type PlainObject = Record<string, unknown>;
 
-type DeepMergedObject<T extends object, S extends readonly unknown[]> = S extends readonly [infer F, ...infer R]
-  ? MergedObject<T, F> extends object
-    ? DeepMergedObject<MergedObject<T, F>, R>
-    : MergedObject<T, F>
-  : T;
+type DeepMergedObject<T extends object, S extends readonly unknown[]> = S extends readonly [infer F, ...infer R] ? (MergedObject<T, F> extends object ? DeepMergedObject<MergedObject<T, F>, R> : MergedObject<T, F>) : T;
 
-type MergedObject<T, S> = [T, S] extends [readonly unknown[], readonly unknown[]]
-  ? T | S
-  : [T, S] extends [object, object]
-    ? Omit<T, keyof S> & S
-    : S;
+type MergedObject<T, S> = [T, S] extends [readonly unknown[], readonly unknown[]] ? T | S : [T, S] extends [object, object] ? Omit<T, keyof S> & S : S;
 
 type Ref = WeakMap<object, unknown>;
 
 //
 // [API]
 //
-export function gattaiMerge<T extends object, const S extends readonly unknown[]>(
-  target: T,
-  sources: S,
-  options: Option = {},
-): DeepMergedObject<T, S> {
+export function gattaiMerge<T extends object, S extends readonly unknown[]>(target: T, ...args: [...S, GattaiMergeOptions] | S): DeepMergedObject<T, S> {
   if (!isObject(target)) {
     return target;
   }
@@ -48,12 +36,18 @@ export function gattaiMerge<T extends object, const S extends readonly unknown[]
     throw new TypeError('Target object frozen.');
   }
 
+  const argsCopy = [...args] as unknown[];
+  const last = argsCopy[argsCopy.length - 1];
+  const hasOptions = isGattaiMergeOptions(last);
+  const GattaiMergeOptionss: GattaiMergeOptions = hasOptions ? (argsCopy.pop() as GattaiMergeOptions) : {};
+  const sources = argsCopy as unknown as S;
+
   const __ref__: Ref = new WeakMap();
   __ref__.set(target, target);
 
   let result: unknown = target;
   for (let i = 0, l = sources.length; i < l; i++) {
-    result = dispatch(result, sources[i], options, __ref__);
+    result = dispatch(result, sources[i], GattaiMergeOptionss, __ref__);
   }
   return result as DeepMergedObject<T, S>;
 }
@@ -61,13 +55,13 @@ export function gattaiMerge<T extends object, const S extends readonly unknown[]
 //
 // [Core] Dispatch
 //
-function dispatch<T, S>(target: T, source: S, options: Option, __ref__: Ref): T | S {
+function dispatch<T, S>(target: T, source: S, GattaiMergeOptionss: GattaiMergeOptions, __ref__: Ref): T | S {
   if (Object.is(target, source)) {
     return target;
   }
 
   if (target == null) {
-    return clone(source, options, __ref__);
+    return clone(source, GattaiMergeOptionss, __ref__);
   }
   if (source == null) {
     return source;
@@ -76,7 +70,7 @@ function dispatch<T, S>(target: T, source: S, options: Option, __ref__: Ref): T 
   const targetIsObject = isObject(target);
   const sourceIsObject = isObject(source);
   if (!targetIsObject || !sourceIsObject) {
-    return sourceIsObject ? clone(source, options, __ref__) : source;
+    return sourceIsObject ? clone(source, GattaiMergeOptionss, __ref__) : source;
   }
 
   // Circular ref: prevent infinite recursion
@@ -85,33 +79,31 @@ function dispatch<T, S>(target: T, source: S, options: Option, __ref__: Ref): T 
   }
 
   if (Array.isArray(target) && Array.isArray(source)) {
-    return mergeArray(target, source, options, __ref__) as T | S;
+    return mergeArray(target, source, GattaiMergeOptionss, __ref__) as T | S;
   }
 
   if (target instanceof Map && source instanceof Map) {
-    return mergeMap(target, source, options, __ref__) as T | S;
+    return mergeMap(target, source, GattaiMergeOptionss, __ref__) as T | S;
   }
 
   if (target instanceof Set && source instanceof Set) {
     const result = new Set<unknown>();
     __ref__.set(source, result);
     for (const v of target) {
-      result.add(clone(v, options, __ref__));
+      result.add(clone(v, GattaiMergeOptionss, __ref__));
     }
     for (const v of source) {
-      result.add(clone(v, options, __ref__));
+      result.add(clone(v, GattaiMergeOptionss, __ref__));
     }
     return result as T | S;
   }
 
   if (isPlainObject(target) && isPlainObject(source)) {
-    return options.descriptors
-      ? (mergeObjectWithDescriptor(target, source, options, __ref__) as T | S)
-      : (merge(target, source, options, __ref__) as T | S);
+    return GattaiMergeOptionss.preserveDescriptors ? (mergeObjectWithDescriptor(target, source, GattaiMergeOptionss, __ref__) as T | S) : (merge(target, source, GattaiMergeOptionss, __ref__) as T | S);
   }
 
   // Fallback: unmergeable types
-  return clone(source, options, __ref__);
+  return clone(source, GattaiMergeOptionss, __ref__);
 }
 
 //
@@ -119,14 +111,14 @@ function dispatch<T, S>(target: T, source: S, options: Option, __ref__: Ref): T 
 //
 const HAS_OWN = Object.prototype.hasOwnProperty;
 
-function merge(target: PlainObject, source: PlainObject, options: Option, __ref__: Ref): PlainObject {
+function merge(target: PlainObject, source: PlainObject, GattaiMergeOptionss: GattaiMergeOptions, __ref__: Ref): PlainObject {
   __ref__.set(source, target);
   let result: PlainObject | null = null;
 
-  for (const key in source) {
-    if (!HAS_OWN.call(source, key) || isUnsafeKey(key)) continue;
-    const sv = source[key];
-    const tv = target[key];
+  for (const key of Reflect.ownKeys(source)) {
+    if (isUnsafeKey(key)) continue;
+    const sv = source[key as keyof typeof source];
+    const tv = target[key as keyof typeof target];
 
     if (!(key in target)) {
       if (result === null) {
@@ -134,28 +126,28 @@ function merge(target: PlainObject, source: PlainObject, options: Option, __ref_
         Object.assign(result, target);
         __ref__.set(source, result);
       }
-      result[key] = clone(sv, options, __ref__);
+      result[key as keyof PlainObject] = clone(sv, GattaiMergeOptionss, __ref__);
       continue;
     }
 
-    const merged = dispatch(tv, sv, options, __ref__);
+    const merged = dispatch(tv, sv, GattaiMergeOptionss, __ref__);
     if (!Object.is(merged, tv)) {
       if (result === null) {
         result = Object.create(Object.getPrototypeOf(target)) as PlainObject;
         Object.assign(result, target);
         __ref__.set(source, result);
       }
-      result[key] = merged;
+      result[key as keyof PlainObject] = merged;
     }
   }
   return result ?? target;
 }
 
-function mergeArray(target: readonly unknown[], source: readonly unknown[], options: Option, __ref__: Ref): unknown[] {
-  const mode = options.arrays ?? 'replace';
+function mergeArray(target: readonly unknown[], source: readonly unknown[], GattaiMergeOptionss: GattaiMergeOptions, __ref__: Ref): unknown[] {
+  const mode = GattaiMergeOptionss.arrays ?? 'replace';
 
   if (mode === 'replace') {
-    return clone(source, options, __ref__) as unknown[];
+    return clone(source, GattaiMergeOptionss, __ref__) as unknown[];
   }
 
   __ref__.set(source, target);
@@ -166,7 +158,7 @@ function mergeArray(target: readonly unknown[], source: readonly unknown[], opti
       result[i] = target[i];
     }
     for (let i = 0; i < source.length; i++) {
-      result[target.length + i] = clone(source[i], options, __ref__);
+      result[target.length + i] = clone(source[i], GattaiMergeOptionss, __ref__);
     }
     __ref__.set(source, result);
     return result;
@@ -187,7 +179,7 @@ function mergeArray(target: readonly unknown[], source: readonly unknown[], opti
       result[i] = tv;
       continue;
     }
-    const merged = !hasTarget ? clone(sv, options, __ref__) : dispatch(tv, sv, options, __ref__);
+    const merged = !hasTarget ? clone(sv, GattaiMergeOptionss, __ref__) : dispatch(tv, sv, GattaiMergeOptionss, __ref__);
     if (!Object.is(merged, tv)) {
       if (result === null) {
         result = [...target];
@@ -207,12 +199,7 @@ function mergeArray(target: readonly unknown[], source: readonly unknown[], opti
   return result ?? (target as unknown[]);
 }
 
-function mergeMap<K, V>(
-  target: ReadonlyMap<K, V>,
-  source: ReadonlyMap<K, V>,
-  options: Option,
-  __ref__: Ref,
-): Map<K, V> {
+function mergeMap<K, V>(target: ReadonlyMap<K, V>, source: ReadonlyMap<K, V>, GattaiMergeOptionss: GattaiMergeOptions, __ref__: Ref): Map<K, V> {
   __ref__.set(source, target);
 
   let result: Map<K, V> | null = null;
@@ -222,11 +209,11 @@ function mergeMap<K, V>(
         result = new Map(target);
         __ref__.set(source, result);
       }
-      result.set(k, clone(v, options, __ref__) as V);
+      result.set(k, clone(v, GattaiMergeOptionss, __ref__) as V);
       continue;
     }
     const tv = target.get(k) as V;
-    const merged = dispatch(tv, v, options, __ref__) as V;
+    const merged = dispatch(tv, v, GattaiMergeOptionss, __ref__) as V;
     if (!Object.is(merged, tv)) {
       if (result === null) {
         result = new Map(target);
@@ -238,7 +225,7 @@ function mergeMap<K, V>(
   return result ?? (target as Map<K, V>);
 }
 
-function mergeObjectWithDescriptor(target: AnyObject, source: AnyObject, options: Option, __ref__: Ref): AnyObject {
+function mergeObjectWithDescriptor(target: AnyObject, source: AnyObject, GattaiMergeOptionss: GattaiMergeOptions, __ref__: Ref): AnyObject {
   const placeholder = Object.create(Object.getPrototypeOf(target));
   __ref__.set(source, placeholder);
 
@@ -258,17 +245,14 @@ function mergeObjectWithDescriptor(target: AnyObject, source: AnyObject, options
     if ('value' in sd) {
       const tv = td && 'value' in td ? td.value : undefined;
 
-      const merged =
-        td === undefined || !('value' in td)
-          ? clone(sd.value, options, __ref__)
-          : dispatch(tv, sd.value, options, __ref__);
+      const merged = td === undefined || !('value' in td) ? clone(sd.value, GattaiMergeOptionss, __ref__) : dispatch(tv, sd.value, GattaiMergeOptionss, __ref__);
 
       if (!td || !('value' in td) || !Object.is(merged, td.value)) {
-        result ??= cloneObjectWithDescriptors(target, options, __ref__);
+        result ??= cloneObjectWithDescriptors(target, GattaiMergeOptionss, __ref__);
         Object.defineProperty(result, key, { ...sd, value: merged });
       }
     } else if (!td) {
-      result ??= cloneObjectWithDescriptors(target, options, __ref__);
+      result ??= cloneObjectWithDescriptors(target, GattaiMergeOptionss, __ref__);
       Object.defineProperty(result, key, sd);
     }
   }
@@ -285,7 +269,7 @@ function mergeObjectWithDescriptor(target: AnyObject, source: AnyObject, options
 //
 // [Core] Clone
 //
-function clone<T>(value: T, options: Option, __ref__: Ref): T {
+function clone<T>(value: T, GattaiMergeOptionss: GattaiMergeOptions, __ref__: Ref): T {
   if (!isObject(value)) {
     return value;
   }
@@ -302,7 +286,7 @@ function clone<T>(value: T, options: Option, __ref__: Ref): T {
       if (!HAS_OWN.call(value, key) || isUnsafeKey(key)) {
         continue;
       }
-      result[key] = clone(value[key], options, __ref__);
+      result[key] = clone(value[key], GattaiMergeOptionss, __ref__);
     }
     return result as T;
   }
@@ -311,7 +295,7 @@ function clone<T>(value: T, options: Option, __ref__: Ref): T {
     const result: unknown[] = [];
     __ref__.set(value, result);
     for (let i = 0, l = value.length; i < l; i++) {
-      result[i] = clone(value[i], options, __ref__);
+      result[i] = clone(value[i], GattaiMergeOptionss, __ref__);
     }
     return result as T;
   }
@@ -347,13 +331,13 @@ function clone<T>(value: T, options: Option, __ref__: Ref): T {
     result.name = value.name;
     result.stack = value.stack;
     if ('cause' in value) {
-      result.cause = clone(value.cause, options, __ref__);
+      result.cause = clone(value.cause, GattaiMergeOptionss, __ref__);
     }
     for (const [k, v] of Object.entries(value)) {
       Object.defineProperty(result, k, {
         configurable: true,
         enumerable: true,
-        value: clone(v, options, __ref__),
+        value: clone(v, GattaiMergeOptionss, __ref__),
         writable: true,
       });
     }
@@ -376,7 +360,7 @@ function clone<T>(value: T, options: Option, __ref__: Ref): T {
     const result = new Map();
     __ref__.set(value, result);
     for (const [k, v] of value) {
-      result.set(k, clone(v, options, __ref__));
+      result.set(k, clone(v, GattaiMergeOptionss, __ref__));
     }
     return result as T;
   }
@@ -385,13 +369,13 @@ function clone<T>(value: T, options: Option, __ref__: Ref): T {
     const result = new Set();
     __ref__.set(value, result);
     for (const v of value) {
-      result.add(clone(v, options, __ref__));
+      result.add(clone(v, GattaiMergeOptionss, __ref__));
     }
     return result as T;
   }
 
-  if (options.descriptors) {
-    return cloneObjectWithDescriptors(value as AnyObject, options, __ref__) as T;
+  if (GattaiMergeOptionss.preserveDescriptors) {
+    return cloneObjectWithDescriptors(value as AnyObject, GattaiMergeOptionss, __ref__) as T;
   }
 
   // Fallback: unsupported types
@@ -399,7 +383,7 @@ function clone<T>(value: T, options: Option, __ref__: Ref): T {
   return value;
 }
 
-function cloneObjectWithDescriptors(obj: AnyObject, options: Option, __ref__: Ref): AnyObject {
+function cloneObjectWithDescriptors(obj: AnyObject, GattaiMergeOptionss: GattaiMergeOptions, __ref__: Ref): AnyObject {
   const result = Object.create(Object.getPrototypeOf(obj)) as AnyObject;
   __ref__.set(obj, result);
 
@@ -410,7 +394,7 @@ function cloneObjectWithDescriptors(obj: AnyObject, options: Option, __ref__: Re
     }
     const descriptor = descriptors[key as string | symbol];
     if ('value' in descriptor) {
-      descriptor.value = clone(descriptor.value, options, __ref__);
+      descriptor.value = clone(descriptor.value, GattaiMergeOptionss, __ref__);
     }
     Object.defineProperty(result, key, descriptor);
   }
@@ -432,4 +416,11 @@ function isPlainObject(value: unknown): value is PlainObject {
 
 function isUnsafeKey(key: PropertyKey): boolean {
   return key === '__proto__' || key === 'prototype' || key === 'constructor';
+}
+
+function isGattaiMergeOptions(value: unknown): value is GattaiMergeOptions {
+  if (!isPlainObject(value)) return false;
+  const keys = Object.keys(value);
+  if (keys.length === 0) return true;
+  return keys.every((k) => k === 'arrays' || k === 'preserveDescriptors');
 }
