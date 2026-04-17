@@ -54,25 +54,15 @@ export function gattaiMerge<T extends object, S extends readonly unknown[]>(
   ...args: [...S, O]
 ): DeepMergedObject<T, S>;
 export function gattaiMerge(target: unknown, ...args: unknown[]) {
-  if (!isObject(target)) {
-    return target;
-  }
-  if (Object.isFrozen(target)) {
-    throw new TypeError('Target object frozen.');
-  }
-
   const argsCopy = [...args] as unknown[];
   const last = argsCopy[argsCopy.length - 1];
   const hasOptions = isGattaiMergeOptions(last);
   const options: O = hasOptions ? (argsCopy.pop() as O) : {};
   const sources = argsCopy;
 
-  const __ref__: Ref = new WeakMap();
-  __ref__.set(target, target);
-
   let result: unknown = target;
   for (let i = 0, l = sources.length; i < l; i++) {
-    result = dispatch(result, sources[i], options, __ref__);
+    result = dispatch(result, sources[i], options, new WeakMap());
   }
   return result;
 }
@@ -86,8 +76,8 @@ function dispatch<T, S>(target: T, source: S, options: O, __ref__: Ref): T | S {
   }
 
   // null or undefined
+  const nullish = options.nullish ?? 'loose';
   if (source == null) {
-    const nullish = options.nullish ?? 'loose';
     if (nullish === 'strict') {
       return source as S;
     }
@@ -96,7 +86,6 @@ function dispatch<T, S>(target: T, source: S, options: O, __ref__: Ref): T | S {
     }
     return target;
   }
-
   if (target == null) {
     return clone(source, options, __ref__);
   }
@@ -106,6 +95,10 @@ function dispatch<T, S>(target: T, source: S, options: O, __ref__: Ref): T | S {
 
   if (!targetIsObject || !sourceIsObject) {
     return sourceIsObject ? clone(source, options, __ref__) : source;
+  }
+
+  if (Object.isFrozen(target)) {
+    throw new TypeError('Target object frozen.');
   }
 
   // Circular ref: prevent infinite recursion
@@ -209,6 +202,7 @@ function mergeArray(
   __ref__: Ref,
 ): unknown[] {
   const mode = options.arrays ?? 'replace';
+  const nullish = options.nullish?? 'loose'; // 追加
 
   if (mode === 'replace') {
     return clone(source, options, __ref__) as unknown[];
@@ -237,6 +231,17 @@ function mergeArray(
     const sv = i < source.length ? source[i] : undefined;
     const hasSource = i < source.length;
     const hasTarget = i < target.length;
+
+    if (hasSource && sv == null && nullish === 'loose') {
+      if (hasTarget) {
+        if (result === null) {
+          result = [...target];
+          __ref__.set(source, result);
+        }
+        continue;
+      }
+      continue;
+    }
 
     if (!hasSource && hasTarget) {
       if (result === null) {
