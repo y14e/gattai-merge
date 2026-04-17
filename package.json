@@ -1,16 +1,16 @@
 {
   "name": "gattai-merge",
-  "version": "2.0.3",
+  "version": "3.0.0",
   "description": "High-performance deep merge utility with structural sharing",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -19,7 +19,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "test": "bun test",
     "prepublishOnly": "npm run build && npm test",
     "lint": "tsc --noEmit"
@@ -42,9 +42,9 @@
   },
   "homepage": "https://github.com/y14e/gattai-merge#readme",
   "devDependencies": {
+    "bun-types": "latest",
     "tsup": "^8.0.0",
-    "typescript": "^5.6.0",
-    "bun-types": "latest"
+    "typescript": "^5.6.0"
   },
   "engines": {
     "node": ">=18"
