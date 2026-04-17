@@ -2,36 +2,145 @@
 
 High-performance deep merge with structural sharing. Supports circular ref and complex built-in types.
 
-## Install
-
-```sh
-npm i gattai-merge
-```
+- ⚡ Fast (copy-on-write, minimal cloning)
+- ♻️ Structural sharing (immutable-friendly)
+- 🔁 Supports circular references
+- 🧠 Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
+- 🧩 Optional descriptor preservation
 
 ## Usage
 
 ```ts
 import { gattaiMerge } from 'gattai-merge';
 
-const result = gattaiMerge(target, source1, source2, /* ..., */ sourceN, { 
-  arrays: 'merge' 
-});
+const a = { foo: 1, nested: { x: 1 } };
+const b = { bar: 2, nested: { x: 1 } };
+
+const result = gattaiMerge(a, b);
+
+console.log(result);
+// { foo: 1, bar: 2, nested: { x: 1 } }
+```
+
+## API
+
+```ts
+gattaiMerge(target, ...sources)
+gattaiMerge(target, ...sources, options)
 ```
 
 ## Options
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `arrays` | `'replace' \| 'concat' \| 'merge'` | `'replace'` | Array merge strategy. `replace`: overwrite with source. `concat`: append source. `merge`: deep merge by index. |
-| `preserveDescriptors` | `boolean` | `false` | If `true`, merge property descriptors via `Object.getOwnPropertyDescriptors`. Preserves getters/setters and flags. |
+```ts
+interface GattaiMergeOptions {
+  arrays?: 'replace' | 'concat' | 'merge';
+  preserveDescriptors?: boolean;
+}
+```
+
+`arrays`
+- `'replace'` (default): replace target array
+- `'concat'`: concatenate arrays
+- `'merge'`: deep merge by index
+
+`preserveDescriptors`
+ - `true`: preserve property descriptors (getters/setters, etc.)
+
+## Examples
+
+### Array strategies
+
+```ts
+gattaiMerge([1, 2], [3, 4]);
+// => [3, 4]
+
+gattaiMerge([1, 2], [3, 4], { arrays: 'concat' });
+// => [1, 2, 3, 4]
+
+gattaiMerge([{ a: 1 }], [{ b: 2 }], { arrays: 'merge' });
+// => [{ a: 1, b: 2 }]
+```
+
+### Map / Set
+
+```ts
+gattaiMerge(
+  new Map([['a', 1]]),
+  new Map([['b', 2]])
+);
+// => Map { 'a' => 1, 'b' => 2 }
+```
+
+### Circular references
+
+```ts
+const a: any = {};
+a.self = a;
+
+const b = gattaiMerge({}, a);
+
+b.self === b; // true
+```
+
+## ⚠️ Structural Sharing & Mutation Caveat
+
+`gattai-merge` is optimized for performance using structural sharing (copy-on-write).
+Objects are only cloned when a change is actually required.
+
+### What this implies
+
+If no changes occur during merging, the original `target` object is returned as-is:
+
+```ts
+const a = { x: 1 };
+const b = { x: 1 };
+
+const result = gattaiMerge(a, b);
+
+result === a; // true
+```
+
+### ⚠️ Important
+
+Because the same reference may be returned, mutating the result can also mutate the original input:
+
+```ts
+result.x = 2;
+
+console.log(a.x); // 2 (mutated!)
+```
+
+### When does this happen?
+
+- When merging produces *no effective changes*
+- When merging `Map`, `Set`, or nested structures with identical values
+- When structural sharing is preserved for performance
+
+### How to avoid this
+
+If you need a fully immutable result (always a new object), you have a few options:
+
+#### 1. Force a new object
+
+```ts
+const result = gattaiMerge({}, a, b);
+```
+
+#### 2. Defensive cloning
+
+```ts
+const result = gattaiMerge(a, b);
+const safe = result === a ? { ...result } : result;
+```
+
+### Design note
+
+This behavior is intentional and aligns with libraries like Immer, prioritizing performance by avoiding unnecessary cloning.
+
+If you require strict immutability guarantees, consider wrapping or extending the API to always return a new object.
 
 ## Performance
 
-| Test | gattai-merge | lodash | deepmerge | Speedup |
-|-----------|--------------:|--------:|-----------:|---------|
-| **Deep 20 levels** (1K keys) | **5,605 ops/s** | 3,434 ops/s | 3,081 ops/s | **1.63x** |
-| **Wide 10K keys** (flat) | **810 ops/s** | 390 ops/s | 346 ops/s | **2.08x** |
-| **Large arrays** (10K items) | **204 ops/s** | 121 ops/s | 109 ops/s | **1.69x** |
-| **Circular graph** (1K nodes) | **119 ops/s** | N/A | 68 ops/s | **1.75x** |
-| **Mega object** (50K nodes) | **29 ops/s** | 14 ops/s | 15 ops/s | **2.07x** |
-| **1M keys** (99% unchanged) | **110 ops/s** | 6 ops/s | 6 ops/s | **18.3x** 🚀 |
+- Avoids unnecessary cloning
+- Only clones changed branches
+- Comparable or faster than typical deep merge libraries in real-world scenarios
