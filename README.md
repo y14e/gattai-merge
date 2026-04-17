@@ -1,4 +1,4 @@
-# gattai-merge
+# gattai-merge (v2.0.3)
 
 High-performance deep merge with structural sharing.
 
