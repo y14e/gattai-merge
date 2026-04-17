@@ -1,6 +1,6 @@
 # gattai-merge (v2.0.3)
 
-High-performance deep merge with structural sharing.
+High-performance deep merge with structural sharing. Supports circular references and complex built-in types.
 
 ## Install
 
