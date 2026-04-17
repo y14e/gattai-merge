@@ -28,7 +28,9 @@ type Ref = WeakMap<object, unknown>;
 //
 // [API]
 //
-export function gattaiMerge<T extends object, S extends readonly unknown[]>(target: T, ...args: [...S, GattaiMergeOptions] | S): DeepMergedObject<T, S> {
+export function gattaiMerge<T extends object, S extends readonly unknown[]>(target: T, ...args: S): DeepMergedObject<T, S>;
+export function gattaiMerge<T extends object, S extends readonly unknown[]>(target: T, ...args: [...S, GattaiMergeOptions]): DeepMergedObject<T, S>;
+export function gattaiMerge(target: unknown, ...args: unknown[]) {
   if (!isObject(target)) {
     return target;
   }
@@ -40,7 +42,7 @@ export function gattaiMerge<T extends object, S extends readonly unknown[]>(targ
   const last = argsCopy[argsCopy.length - 1];
   const hasOptions = isGattaiMergeOptions(last);
   const options: GattaiMergeOptions = hasOptions ? (argsCopy.pop() as GattaiMergeOptions) : {};
-  const sources = argsCopy as unknown as S;
+  const sources = argsCopy;
 
   const __ref__: Ref = new WeakMap();
   __ref__.set(target, target);
@@ -49,7 +51,7 @@ export function gattaiMerge<T extends object, S extends readonly unknown[]>(targ
   for (let i = 0, l = sources.length; i < l; i++) {
     result = dispatch(result, sources[i], options, __ref__);
   }
-  return result as DeepMergedObject<T, S>;
+  return result;
 }
 
 //
