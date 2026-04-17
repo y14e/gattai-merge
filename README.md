@@ -112,7 +112,7 @@ console.log(a.x); // 2 (mutated!)
 
 ### When does this happen?
 
-- When merging produces *no effective changes*
+- When merging produces **no effective changes**
 - When merging `Map`, `Set`, or nested structures with identical values
 - When structural sharing is preserved for performance
 
