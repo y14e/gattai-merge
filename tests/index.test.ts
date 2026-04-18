@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { gattaiMerge } from '../src/index';
+import gattaiMerge from '../src/index';
 
 describe('gattaiMerge', () => {
   test('primitive values: source wins', () => {

@@ -1,9 +1,9 @@
 /**
  * gattai-merge
  * High-performance deep merge utility with structural sharing.
- * Supports circular references and complex built-in types.
+ * Supports circular ref and complex built-in types.
  *
- * @version 3.0.0
+ * @version 3.0.1
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -45,15 +45,15 @@ type Ref = WeakMap<object, unknown>;
 //
 // [API]
 //
-export function gattaiMerge<T extends object, S extends readonly unknown[]>(
-  target: T,
-  ...args: S
-): DeepMergedObject<T, S>;
-export function gattaiMerge<T extends object, S extends readonly unknown[]>(
-  target: T,
-  ...args: [...S, O]
-): DeepMergedObject<T, S>;
-export function gattaiMerge(target: unknown, ...args: unknown[]) {
+export default function gattaiMerge<
+  T extends object,
+  S extends readonly unknown[],
+>(target: T, ...args: S): DeepMergedObject<T, S>;
+export default function gattaiMerge<
+  T extends object,
+  S extends readonly unknown[],
+>(target: T, ...args: [...S, O]): DeepMergedObject<T, S>;
+export default function gattaiMerge(target: unknown, ...args: unknown[]) {
   const argsCopy = [...args] as unknown[];
   const last = argsCopy[argsCopy.length - 1];
   const hasOptions = isGattaiMergeOptions(last);
@@ -202,7 +202,7 @@ function mergeArray(
   __ref__: Ref,
 ): unknown[] {
   const mode = options.arrays ?? 'replace';
-  const nullish = options.nullish?? 'loose'; // 追加
+  const nullish = options.nullish ?? 'loose'; // 追加
 
   if (mode === 'replace') {
     return clone(source, options, __ref__) as unknown[];
