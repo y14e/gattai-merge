@@ -1,4 +1,4 @@
-# gattai-merge (v3.0.1)
+# gattai-merge (v3.0.2)
 
 High-performance deep merge with structural sharing. Supports circular ref and complex built-in types.
 
