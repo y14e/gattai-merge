@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "description": "High-performance deep merge utility with structural sharing",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.0.3
+ * @version 3.0.4
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -47,6 +47,8 @@ type Ref = WeakMap<object, unknown>;
 //
 
 const EMPTY_OPTIONS: O = {};
+const HAS_OWN = Object.prototype.hasOwnProperty;
+const OBJECT_TO_STRING = Object.prototype.toString;
 
 export default function gattaiMerge<
   T extends object,
@@ -140,6 +142,22 @@ function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
     return result as T | S;
   }
 
+  // Fast merge
+  if (
+    !options.preserveDescriptors &&
+    isPlainObject(target) &&
+    isPlainObject(source) &&
+    Object.getPrototypeOf(target) === Object.prototype &&
+    Object.getPrototypeOf(source) === Object.prototype
+  ) {
+    return fastMerge(
+      target as PlainObject,
+      source as PlainObject,
+      options,
+      ref,
+    ) as T | S;
+  }
+
   if (isPlainObject(target) && isPlainObject(source)) {
     return options.preserveDescriptors
       ? (mergeWithDescriptor(target, source, options, ref) as T | S)
@@ -153,8 +171,6 @@ function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
 //
 // [Merge]
 //
-
-const HAS_OWN = Object.prototype.hasOwnProperty;
 
 function merge(
   target: PlainObject,
@@ -212,6 +228,50 @@ function merge(
       }
 
       result[key as keyof PlainObject] = mergedValue;
+    }
+  }
+
+  return result ?? target;
+}
+
+function fastMerge(
+  target: PlainObject,
+  source: PlainObject,
+  options: O,
+  ref: Ref,
+): PlainObject {
+  ref.set(source, target);
+
+  let result: PlainObject | null = null;
+
+  for (const key in source) {
+    if (!HAS_OWN.call(source, key) || isUnsafeKey(key)) {
+      continue;
+    }
+
+    const sourceValue = source[key];
+    const targetValue = target[key];
+
+    if (!HAS_OWN.call(target, key)) {
+      if (result === null) {
+        result = { ...target };
+
+        ref.set(source, result);
+      }
+
+      result[key] = clone(sourceValue, options, ref);
+      continue;
+    }
+
+    const mergedValue = dispatch(targetValue, sourceValue, options, ref);
+
+    if (!isSame(mergedValue, targetValue)) {
+      if (result === null) {
+        result = { ...target };
+        ref.set(source, result);
+      }
+
+      result[key] = mergedValue;
     }
   }
 
@@ -628,8 +688,6 @@ function isGattaiMergeOptions(value: unknown): value is O {
 function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null;
 }
-
-const OBJECT_TO_STRING = Object.prototype.toString;
 
 function isPlainObject(value: unknown): value is PlainObject {
   return OBJECT_TO_STRING.call(value) === '[object Object]';
