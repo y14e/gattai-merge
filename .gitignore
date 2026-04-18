@@ -4,4 +4,4 @@ dist
 *.log
 coverage
 /internal-tests
-bench.ts
+_RELEASE.txt
