@@ -4,7 +4,7 @@ High-performance deep merge with structural sharing. Supports circular ref and c
 
 - ⚡ Fast (copy-on-write, minimal cloning)
 - ♻️ Structural sharing (immutable-friendly)
-- 🔁 Supports circular references
+- 🔁 Supports circular ref
 - 🧠 Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
 - 🧩 Optional descriptor preservation
 
@@ -77,7 +77,7 @@ gattaiMerge(
 // => Map { 'a' => 1, 'b' => 2 }
 ```
 
-### Circular references
+### Circular ref
 
 ```ts
 const a: any = {};
@@ -108,7 +108,7 @@ result === a; // true
 
 ### ⚠️ Important
 
-Because the same reference may be returned, mutating the result can also mutate the original input:
+Because the same ref may be returned, mutating the result can also mutate the original input:
 
 ```ts
 result.x = 2;
