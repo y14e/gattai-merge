@@ -46,7 +46,7 @@ interface GattaiMergeOptions {
 
 `nullish`
 - `'loose'` (default): keep target value if source is nullish
-- `'strict'`: overwrite target with nullish
+- `'strict'`: overwrite target value if source is nullish
 - `'throw'`: throw TypeError if source is nullish
 
 `preserveDescriptors`
