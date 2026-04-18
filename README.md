@@ -1,4 +1,4 @@
-# gattai-merge (v3.0.0)
+# gattai-merge (v3.0.1)
 
 High-performance deep merge with structural sharing. Supports circular ref and complex built-in types.
 
@@ -11,7 +11,7 @@ High-performance deep merge with structural sharing. Supports circular ref and c
 ## Usage
 
 ```ts
-import { gattaiMerge } from 'gattai-merge';
+import gattaiMerge from 'gattai-merge';
 
 const a = { foo: 1, nested: { x: 1 } };
 const b = { bar: 2, nested: { x: 1 } };
