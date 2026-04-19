@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.0.7
+ * @version 3.0.8
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -168,35 +168,35 @@ function merge(
   ref: Ref,
 ): PlainObject {
   ref.set(source, target); // [Ref.set]
+  let targetKeys: string[] | null = null;
   const sourceKeys = Reflect.ownKeys(source);
   let result: PlainObject | null = null;
   const proto = Object.getPrototypeOf(target);
-  let targetKeys: string[] | null = null;
 
   for (let i = 0, l = sourceKeys.length; i < l; i++) {
-    const key = sourceKeys[i];
+    const sourceKey = sourceKeys[i];
 
-    if (isUnsafeKey(key)) {
+    if (isUnsafeKey(sourceKey)) {
       continue;
     }
 
-    const targetValue = target[key as keyof typeof target];
-    const sourceValue = source[key as keyof typeof source];
+    const targetValue = target[sourceKey as keyof typeof target];
+    const sourceValue = source[sourceKey as keyof typeof source];
 
-    if (!HAS_OWN.call(target, key)) {
+    if (!HAS_OWN.call(target, sourceKey)) {
       if (result === null) {
         result = Object.create(proto) as PlainObject;
         targetKeys ??= Object.keys(target);
 
         for (let j = 0, m = targetKeys.length; j < m; j++) {
-          const k = targetKeys[j];
-          result[k] = target[k];
+          const targetKey = targetKeys[j];
+          result[targetKey] = target[targetKey];
         }
 
         ref.set(source, result); // [Ref.set]
       }
 
-      result[key as keyof PlainObject] = clone(sourceValue, options, ref);
+      result[sourceKey as keyof PlainObject] = clone(sourceValue, options, ref);
       continue;
     }
 
@@ -208,14 +208,14 @@ function merge(
         targetKeys ??= Object.keys(target);
 
         for (let j = 0, m = targetKeys.length; j < m; j++) {
-          const k = targetKeys[j];
-          result[k] = target[k];
+          const targetKey = targetKeys[j];
+          result[targetKey] = target[targetKey];
         }
 
         ref.set(source, result); // [Ref.set]
       }
 
-      result[key as keyof PlainObject] = mergedValue;
+      result[sourceKey as keyof PlainObject] = mergedValue;
     }
   }
 
@@ -288,15 +288,18 @@ function mergeArray(
 
   ref.set(source, target); // [Ref.set]
 
-  if (arrays === 'concat') {
-    const result = new Array(target.length + source.length);
+  const targetLength = target.length;
+  const sourceLength = source.length;
 
-    for (let i = 0, l = target.length; i < l; i++) {
+  if (arrays === 'concat') {
+    const result = new Array(targetLength + sourceLength);
+
+    for (let i = 0, l = targetLength; i < l; i++) {
       result[i] = target[i];
     }
 
-    for (let i = 0, l = source.length; i < l; i++) {
-      result[target.length + i] = clone(source[i], options, ref);
+    for (let i = 0, l = sourceLength; i < l; i++) {
+      result[targetLength + i] = clone(source[i], options, ref);
     }
 
     ref.set(source, result); // [Ref.set]
@@ -306,9 +309,9 @@ function mergeArray(
   // arrays === 'merge'
   let result: unknown[] | null = null;
 
-  for (let i = 0, l = Math.max(target.length, source.length); i < l; i++) {
-    const hasTarget = i < target.length;
-    const hasSource = i < source.length;
+  for (let i = 0, l = Math.max(targetLength, sourceLength); i < l; i++) {
+    const hasTarget = i < targetLength;
+    const hasSource = i < sourceLength;
     const targetValue = hasTarget ? target[i] : undefined;
     const sourceValue = hasSource ? source[i] : undefined;
 
@@ -334,6 +337,7 @@ function mergeArray(
     const mergedValue = !hasTarget
       ? clone(sourceValue, options, ref)
       : dispatch(targetValue, sourceValue, options, ref);
+    const resultLength = result?.length ?? 0;
 
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
@@ -341,13 +345,13 @@ function mergeArray(
         ref.set(source, result); // [Ref.set]
       }
 
-      if (result.length <= i) {
+      if (resultLength <= i) {
         result.length = i + 1;
       }
 
       result[i] = mergedValue;
     } else if (result !== null) {
-      if (result.length <= i) {
+      if (resultLength <= i) {
         result.length = i + 1;
       }
 
@@ -509,6 +513,7 @@ function clone<T>(value: T, options: O, ref: Ref): T {
     return result as T;
   }
 
+  // Array
   if (Array.isArray(value)) {
     const result: unknown[] = [];
     ref.set(value, result); // [Ref.set]
@@ -520,83 +525,84 @@ function clone<T>(value: T, options: O, ref: Ref): T {
     return result as T;
   }
 
+  // Date
   if (value instanceof Date) {
     const result = new Date(value.getTime());
     ref.set(value, result); // [Ref.set]
     return result as T;
   }
 
+  // RegExp
   if (value instanceof RegExp) {
     const result = new RegExp(value.source, value.flags);
     ref.set(value, result); // [Ref.set]
+    result.lastIndex = value.lastIndex;
     return result as T;
   }
 
-  if (ArrayBuffer.isView(value)) {
-    const Ctor = value.constructor as new (arg: typeof value) => typeof value;
-    const result = new Ctor(value);
-    ref.set(value, result); // [Ref.set]
-    return result as T;
-  }
-
+  // ArrayBuffer
   if (value instanceof ArrayBuffer) {
     const result = value.slice(0);
-    ref.set(value, result); // [Ref.set]
+    ref.set(value, result);
     return result as T;
   }
 
+  // TypedArray
+  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+    const Ctor = value.constructor as any;
+    const result = new Ctor(value);
+    ref.set(value, result);
+    return result as T;
+  }
+
+  // DataView
+  if (value instanceof DataView) {
+    const result = new DataView(value.buffer.slice(0), value.byteOffset, value.byteLength);
+    ref.set(value, result);
+    return result as T;
+  }
+
+  // Error and DOMException
   if (
     value instanceof Error ||
     (typeof DOMException !== 'undefined' && value instanceof DOMException)
   ) {
-    const Ctor = value.constructor as new (message?: string) => Error;
-    const result = new Ctor(value.message);
+    const result = cloneError(value);
     ref.set(value, result); // [Ref.set]
-    result.name = value.name;
-    result.stack = value.stack;
-
-    if ('cause' in value) {
-      result.cause = clone(value.cause, options, ref);
-    }
-
-    for (const [key, v] of Object.entries(value)) {
-      Object.defineProperty(result, key, {
-        configurable: true,
-        enumerable: true,
-        value: clone(v, options, ref),
-        writable: true,
-      });
-    }
-
     return result as T;
   }
 
-  if (value instanceof Blob) {
+  // Blob
+  if (typeof Blob !== "undefined" && value instanceof Blob) {
     const result = value.slice(0, value.size, value.type);
-    ref.set(value, result); // [Ref.set]
+    ref.set(value, result);
     return result as T;
   }
 
-  if (typeof ImageData !== 'undefined' && value instanceof ImageData) {
+  // ImageData
+  if (typeof ImageData !== "undefined" && value instanceof ImageData) {
     const result = new ImageData(
       new Uint8ClampedArray(value.data),
       value.width,
       value.height,
     );
-    ref.set(value, result); // [Ref.set]
+    ref.set(value, result);
     return result as T;
   }
 
+  // Map
   if (value instanceof Map) {
     const result = new Map();
     ref.set(value, result); // [Ref.set]
     for (const [key, v] of value) {
-      result.set(key, clone(v, options, ref));
+      // result.set(key, clone(v, options, ref));
+      result.set(clone(key, options, ref), clone(v, options, ref));
     }
 
     return result as T;
   }
 
+  // Set
   if (value instanceof Set) {
     const result = new Set();
     ref.set(value, result); // [Ref.set]
@@ -608,6 +614,7 @@ function clone<T>(value: T, options: O, ref: Ref): T {
     return result as T;
   }
 
+  // With descriptors
   if (options.preserveDescriptors) {
     return cloneWithDescriptors(value as AnyObject, options, ref) as T;
   }
@@ -615,6 +622,48 @@ function clone<T>(value: T, options: O, ref: Ref): T {
   // Fallback: unsupported types
   ref.set(value, value); // [Ref.set]
   return value;
+}
+
+function cloneError(value: unknown): Error {
+  if (!(value instanceof Error)) {
+    throw new TypeError('Expected Error');
+  }
+
+  const name = value.name || 'Error';
+  const message = value.message || '';
+  let result: Error;
+
+  switch (name) {
+    case 'RangeError':
+      result = new RangeError(message);
+      break;
+    case 'ReferenceError':
+      result = new ReferenceError(message);
+      break;
+    case 'SyntaxError':
+      result = new SyntaxError(message);
+      break;
+    case 'TypeError':
+      result = new TypeError(message);
+      break;
+    default:
+      result = new Error(message);
+      result.name = name;
+  }
+
+  if (value.stack) {
+    result.stack = value.stack;
+  }
+
+  for (const key of Object.keys(value) as (keyof typeof value)[]) {
+    if (key === 'name' || key === 'message' || key === 'stack') {
+      continue;
+    }
+
+    result[key] = value[key];
+  }
+
+  return result;
 }
 
 function cloneWithDescriptors(
