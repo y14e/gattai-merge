@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.0.5
+ * @version 3.0.6
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -428,6 +428,16 @@ function mergeWithDescriptors(
               options,
               ref,
             );
+
+      if (
+        targetDesc &&
+        (targetDesc.configurable === false ||
+          ('value' in targetDesc &&
+            targetDesc.writable === false &&
+            !isSame(mergedValue, targetDesc.value)))
+      ) {
+        continue;
+      }
 
       if (
         !targetDesc ||
