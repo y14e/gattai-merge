@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.0.6
+ * @version 3.0.7
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -14,6 +14,7 @@ export interface GattaiMergeOptions {
   readonly arrays?: 'replace' | 'concat' | 'merge';
   readonly nullish?: 'loose' | 'strict' | 'throw';
   readonly preserveDescriptors?: boolean;
+  readonly strictDescriptors?: boolean;
 }
 
 type O = GattaiMergeOptions;
@@ -436,6 +437,14 @@ function mergeWithDescriptors(
             targetDesc.writable === false &&
             !isSame(mergedValue, targetDesc.value)))
       ) {
+        if (options.strictDescriptors) {
+          throw new TypeError(
+            `Cannot merge descriptor for key ${String(key)}: ` +
+              `configurable=${targetDesc.configurable}, ` +
+              `writable=${'value' in targetDesc ? targetDesc.writable : 'N/A'}`,
+          );
+        }
+
         continue;
       }
 
@@ -536,7 +545,10 @@ function clone<T>(value: T, options: O, ref: Ref): T {
     return result as T;
   }
 
-  if (value instanceof Error || value instanceof DOMException) {
+  if (
+    value instanceof Error ||
+    (typeof DOMException !== 'undefined' && value instanceof DOMException)
+  ) {
     const Ctor = value.constructor as new (message?: string) => Error;
     const result = new Ctor(value.message);
     ref.set(value, result); // [Ref.set]
@@ -651,7 +663,10 @@ function isGattaiMergeOptions(value: unknown): value is O {
 
   return keys.every((key) => {
     return (
-      key === 'arrays' || key === 'nullish' || key === 'preserveDescriptors'
+      key === 'arrays' ||
+      key === 'nullish' ||
+      key === 'preserveDescriptors' ||
+      key === 'strictDescriptors'
     );
   });
 }

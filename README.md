@@ -1,4 +1,4 @@
-# gattai-merge (v3.0.6)
+# gattai-merge (v3.0.7)
 
 High-performance deep merge with structural sharing. Supports circular ref and complex built-in types.
 
@@ -36,6 +36,7 @@ interface GattaiMergeOptions {
   arrays?: 'replace' | 'concat' | 'merge';
   nullish?: 'loose' | 'strict' | 'throw';
   preserveDescriptors?: boolean;
+  strictDescriptors?: boolean;
 }
 ```
 
@@ -50,7 +51,12 @@ interface GattaiMergeOptions {
 - `'throw'`: throw TypeError if source is nullish
 
 `preserveDescriptors`
+ - `false` (default): use standard merge (faster, ignores property descriptors)
  - `true`: preserve property descriptors (getters/setters, etc.)
+
+`strictDescriptors`
+ - `false` (default): skip incompatible descriptors
+ - `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
 
 ## Examples
 
