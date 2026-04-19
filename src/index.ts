@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.0.4
+ * @version 3.0.5
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -42,13 +42,13 @@ type MergedObject<T, S> = [T, S] extends [
 
 type Ref = WeakMap<object, unknown>;
 
-//
-// [API]
-//
-
 const EMPTY_OPTIONS: O = {};
 const HAS_OWN = Object.prototype.hasOwnProperty;
 const OBJECT_TO_STRING = Object.prototype.toString;
+
+//
+// [API]
+//
 
 export default function gattaiMerge<
   T extends object,
@@ -100,10 +100,9 @@ function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
     return clone(source, options, ref);
   }
 
-  const targetIsObject = isObject(target);
   const sourceIsObject = isObject(source);
 
-  if (!targetIsObject || !sourceIsObject) {
+  if (!isObject(target) || !sourceIsObject) {
     return sourceIsObject ? clone(source, options, ref) : source;
   }
 
@@ -111,7 +110,7 @@ function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
     throw new TypeError('Target object frozen.');
   }
 
-  // Circular ref: prevent infinite recursion
+  // [Ref]
   const cached = ref.get(source);
 
   if (cached !== undefined) {
@@ -128,8 +127,7 @@ function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
 
   if (target instanceof Set && source instanceof Set) {
     const result = new Set<unknown>();
-
-    ref.set(source, result);
+    ref.set(source, result); // [Ref.set]
 
     for (const v of target) {
       result.add(clone(v, options, ref));
@@ -142,26 +140,16 @@ function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
     return result as T | S;
   }
 
-  // Fast merge
-  if (
-    !options.preserveDescriptors &&
-    isPlainObject(target) &&
-    isPlainObject(source) &&
-    Object.getPrototypeOf(target) === Object.prototype &&
-    Object.getPrototypeOf(source) === Object.prototype
-  ) {
-    return fastMerge(
-      target as PlainObject,
-      source as PlainObject,
-      options,
-      ref,
-    ) as T | S;
-  }
-
   if (isPlainObject(target) && isPlainObject(source)) {
-    return options.preserveDescriptors
-      ? (mergeWithDescriptor(target, source, options, ref) as T | S)
-      : (merge(target, source, options, ref) as T | S);
+    if (!options.preserveDescriptors) {
+      if (isObjectPrototype(target) && isObjectPrototype(source)) {
+        return fastMerge(target, source, options, ref) as T | S;
+      }
+
+      return merge(target, source, options, ref) as T | S;
+    }
+
+    return mergeWithDescriptors(target, source, options, ref) as T | S;
   }
 
   // Fallback: unmergeable types
@@ -178,10 +166,9 @@ function merge(
   options: O,
   ref: Ref,
 ): PlainObject {
-  ref.set(source, target);
-
-  let result: PlainObject | null = null;
+  ref.set(source, target); // [Ref.set]
   const sourceKeys = Reflect.ownKeys(source);
+  let result: PlainObject | null = null;
   const proto = Object.getPrototypeOf(target);
   let targetKeys: string[] | null = null;
 
@@ -192,8 +179,8 @@ function merge(
       continue;
     }
 
-    const sourceValue = source[key as keyof typeof source];
     const targetValue = target[key as keyof typeof target];
+    const sourceValue = source[key as keyof typeof source];
 
     if (!HAS_OWN.call(target, key)) {
       if (result === null) {
@@ -205,7 +192,7 @@ function merge(
           result[k] = target[k];
         }
 
-        ref.set(source, result);
+        ref.set(source, result); // [Ref.set]
       }
 
       result[key as keyof PlainObject] = clone(sourceValue, options, ref);
@@ -224,7 +211,7 @@ function merge(
           result[k] = target[k];
         }
 
-        ref.set(source, result);
+        ref.set(source, result); // [Ref.set]
       }
 
       result[key as keyof PlainObject] = mergedValue;
@@ -240,8 +227,7 @@ function fastMerge(
   options: O,
   ref: Ref,
 ): PlainObject {
-  ref.set(source, target);
-
+  ref.set(source, target); // [Ref.set]
   let result: PlainObject | null = null;
 
   for (const key in source) {
@@ -249,14 +235,13 @@ function fastMerge(
       continue;
     }
 
-    const sourceValue = source[key];
     const targetValue = target[key];
+    const sourceValue = source[key];
 
     if (!HAS_OWN.call(target, key)) {
       if (result === null) {
         result = { ...target };
-
-        ref.set(source, result);
+        ref.set(source, result); // [Ref.set]
       }
 
       result[key] = clone(sourceValue, options, ref);
@@ -268,7 +253,7 @@ function fastMerge(
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
         result = { ...target };
-        ref.set(source, result);
+        ref.set(source, result); // [Ref.set]
       }
 
       result[key] = mergedValue;
@@ -285,12 +270,22 @@ function mergeArray(
   ref: Ref,
 ): unknown[] {
   const arrays = options.arrays ?? 'replace';
+  const nullish = options.nullish ?? 'loose';
+
+  if (
+    arrays === 'merge' &&
+    nullish !== 'loose' &&
+    isShallowArray(target) &&
+    isShallowArray(source)
+  ) {
+    return source.slice();
+  }
 
   if (arrays === 'replace') {
     return clone(source, options, ref) as unknown[];
   }
 
-  ref.set(source, target);
+  ref.set(source, target); // [Ref.set]
 
   if (arrays === 'concat') {
     const result = new Array(target.length + source.length);
@@ -303,31 +298,23 @@ function mergeArray(
       result[target.length + i] = clone(source[i], options, ref);
     }
 
-    ref.set(source, result);
-
+    ref.set(source, result); // [Ref.set]
     return result;
   }
 
   // arrays === 'merge'
-  const max = Math.max(target.length, source.length);
-  const nullish = options.nullish ?? 'loose';
   let result: unknown[] | null = null;
 
-  for (let i = 0; i < max; i++) {
+  for (let i = 0, l = Math.max(target.length, source.length); i < l; i++) {
     const hasTarget = i < target.length;
     const hasSource = i < source.length;
     const targetValue = hasTarget ? target[i] : undefined;
     const sourceValue = hasSource ? source[i] : undefined;
 
     if (hasSource && sourceValue == null && nullish === 'loose') {
-      if (hasTarget) {
-        if (result === null) {
-          result = [...target];
-
-          ref.set(source, result);
-        }
-
-        continue;
+      if (hasTarget && result === null) {
+        result = [...target];
+        ref.set(source, result); // [Ref.set]
       }
 
       continue;
@@ -336,8 +323,7 @@ function mergeArray(
     if (!hasSource && hasTarget) {
       if (result === null) {
         result = [...target];
-
-        ref.set(source, result);
+        ref.set(source, result); // [Ref.set]
       }
 
       result[i] = targetValue;
@@ -351,8 +337,7 @@ function mergeArray(
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
         result = [...target];
-
-        ref.set(source, result);
+        ref.set(source, result); // [Ref.set]
       }
 
       if (result.length <= i) {
@@ -378,20 +363,17 @@ function mergeMap<K, V>(
   options: O,
   ref: Ref,
 ): Map<K, V> {
-  ref.set(source, target);
-
+  ref.set(source, target); // [Ref.set]
   let result: Map<K, V> | null = null;
 
   for (const [key, sourceValue] of source) {
     if (!target.has(key)) {
       if (result === null) {
         result = new Map(target);
-
-        ref.set(source, result);
+        ref.set(source, result); // [Ref.set]
       }
 
       result.set(key, clone(sourceValue, options, ref) as V);
-
       continue;
     }
 
@@ -401,8 +383,7 @@ function mergeMap<K, V>(
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
         result = new Map(target);
-
-        ref.set(source, result);
+        ref.set(source, result); // [Ref.set]
       }
 
       result.set(key, mergedValue);
@@ -412,20 +393,18 @@ function mergeMap<K, V>(
   return result ?? (target as Map<K, V>);
 }
 
-function mergeWithDescriptor(
+function mergeWithDescriptors(
   target: AnyObject,
   source: AnyObject,
   options: O,
   ref: Ref,
 ): AnyObject {
   const placeholder = Object.create(Object.getPrototypeOf(target));
-
-  ref.set(source, placeholder);
-
-  let result: AnyObject | null = null;
+  ref.set(source, placeholder); // [Ref.set]
   const targetDescs = Object.getOwnPropertyDescriptors(target);
   const sourceDescs = Object.getOwnPropertyDescriptors(source);
   const keys = Reflect.ownKeys(sourceDescs);
+  let result: AnyObject | null = null;
 
   for (let i = 0, l = keys.length; i < l; i++) {
     const key = keys[i];
@@ -438,12 +417,17 @@ function mergeWithDescriptor(
     const sourceDesc = sourceDescs[key as string | symbol];
 
     if ('value' in sourceDesc) {
-      const targetValue =
-        targetDesc && 'value' in targetDesc ? targetDesc.value : undefined;
       const mergedValue =
         targetDesc === undefined || !('value' in targetDesc)
           ? clone(sourceDesc.value, options, ref)
-          : dispatch(targetValue, sourceDesc.value, options, ref);
+          : dispatch(
+              targetDesc && 'value' in targetDesc
+                ? targetDesc.value
+                : undefined,
+              sourceDesc.value,
+              options,
+              ref,
+            );
 
       if (
         !targetDesc ||
@@ -463,8 +447,7 @@ function mergeWithDescriptor(
   }
 
   if (result === null) {
-    ref.set(source, target);
-
+    ref.set(source, target); // [Ref.set]
     return target;
   }
 
@@ -485,7 +468,7 @@ function clone<T>(value: T, options: O, ref: Ref): T {
     return value;
   }
 
-  // Circular ref: prevent infinite recursion
+  // [Ref]
   const cached = ref.get(value);
 
   if (cached !== undefined) {
@@ -494,8 +477,7 @@ function clone<T>(value: T, options: O, ref: Ref): T {
 
   if (isPlainObject(value)) {
     const result = Object.create(Object.getPrototypeOf(value)) as PlainObject;
-
-    ref.set(value, result);
+    ref.set(value, result); // [Ref.set]
 
     for (const key in value) {
       if (!HAS_OWN.call(value, key) || isUnsafeKey(key)) {
@@ -510,8 +492,7 @@ function clone<T>(value: T, options: O, ref: Ref): T {
 
   if (Array.isArray(value)) {
     const result: unknown[] = [];
-
-    ref.set(value, result);
+    ref.set(value, result); // [Ref.set]
 
     for (let i = 0, l = value.length; i < l; i++) {
       result[i] = clone(value[i], options, ref);
@@ -522,43 +503,33 @@ function clone<T>(value: T, options: O, ref: Ref): T {
 
   if (value instanceof Date) {
     const result = new Date(value.getTime());
-
-    ref.set(value, result);
-
+    ref.set(value, result); // [Ref.set]
     return result as T;
   }
 
   if (value instanceof RegExp) {
     const result = new RegExp(value.source, value.flags);
-
-    ref.set(value, result);
-
+    ref.set(value, result); // [Ref.set]
     return result as T;
   }
 
   if (ArrayBuffer.isView(value)) {
     const Ctor = value.constructor as new (arg: typeof value) => typeof value;
     const result = new Ctor(value);
-
-    ref.set(value, result);
-
+    ref.set(value, result); // [Ref.set]
     return result as T;
   }
 
   if (value instanceof ArrayBuffer) {
     const result = value.slice(0);
-
-    ref.set(value, result);
-
+    ref.set(value, result); // [Ref.set]
     return result as T;
   }
 
   if (value instanceof Error || value instanceof DOMException) {
     const Ctor = value.constructor as new (message?: string) => Error;
     const result = new Ctor(value.message);
-
-    ref.set(value, result);
-
+    ref.set(value, result); // [Ref.set]
     result.name = value.name;
     result.stack = value.stack;
 
@@ -580,9 +551,7 @@ function clone<T>(value: T, options: O, ref: Ref): T {
 
   if (value instanceof Blob) {
     const result = value.slice(0, value.size, value.type);
-
-    ref.set(value, result);
-
+    ref.set(value, result); // [Ref.set]
     return result as T;
   }
 
@@ -592,17 +561,13 @@ function clone<T>(value: T, options: O, ref: Ref): T {
       value.width,
       value.height,
     );
-
-    ref.set(value, result);
-
+    ref.set(value, result); // [Ref.set]
     return result as T;
   }
 
   if (value instanceof Map) {
     const result = new Map();
-
-    ref.set(value, result);
-
+    ref.set(value, result); // [Ref.set]
     for (const [key, v] of value) {
       result.set(key, clone(v, options, ref));
     }
@@ -612,8 +577,7 @@ function clone<T>(value: T, options: O, ref: Ref): T {
 
   if (value instanceof Set) {
     const result = new Set();
-
-    ref.set(value, result);
+    ref.set(value, result); // [Ref.set]
 
     for (const v of value) {
       result.add(clone(v, options, ref));
@@ -627,8 +591,7 @@ function clone<T>(value: T, options: O, ref: Ref): T {
   }
 
   // Fallback: unsupported types
-  ref.set(value, value);
-
+  ref.set(value, value); // [Ref.set]
   return value;
 }
 
@@ -638,9 +601,7 @@ function cloneWithDescriptors(
   ref: Ref,
 ): AnyObject {
   const result = Object.create(Object.getPrototypeOf(value)) as AnyObject;
-
-  ref.set(value, result);
-
+  ref.set(value, result); // [Ref.set]
   const descriptors = Object.getOwnPropertyDescriptors(value);
   const keys = Reflect.ownKeys(descriptors);
 
@@ -689,6 +650,10 @@ function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null;
 }
 
+function isObjectPrototype(value: unknown): value is PlainObject {
+  return Object.getPrototypeOf(value) === Object.prototype;
+}
+
 function isPlainObject(value: unknown): value is PlainObject {
   return OBJECT_TO_STRING.call(value) === '[object Object]';
 }
@@ -696,6 +661,16 @@ function isPlainObject(value: unknown): value is PlainObject {
 function isSame(a: unknown, b: unknown): boolean {
   // biome-ignore lint/suspicious/noSelfCompare: performance optimization
   return a === b || (a !== a && b !== b);
+}
+
+function isShallowArray(array: readonly unknown[]): boolean {
+  for (let i = 0, l = array.length; i < l; i++) {
+    if (isObject(array[i])) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function isUnsafeKey(key: PropertyKey): boolean {

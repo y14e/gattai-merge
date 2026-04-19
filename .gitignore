@@ -5,3 +5,4 @@ dist
 coverage
 /internal-tests
 _RELEASE.txt
+bench.ts
