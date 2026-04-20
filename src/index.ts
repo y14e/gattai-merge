@@ -3,12 +3,16 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.0.8
+ * @version 3.0.9
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
  * @see {@link https://github.com/y14e/gattai-merge}
  */
+
+// -----------------------------------------------------------------------------
+// [Types]
+// -----------------------------------------------------------------------------
 
 export interface GattaiMergeOptions {
   readonly arrays?: 'replace' | 'concat' | 'merge';
@@ -23,14 +27,7 @@ type AnyObject = Record<PropertyKey, unknown>;
 
 type PlainObject = Record<string, unknown>;
 
-type DeepMergedObject<
-  T extends object,
-  S extends readonly unknown[],
-> = S extends readonly [infer F, ...infer R]
-  ? MergedObject<T, F> extends object
-    ? DeepMergedObject<MergedObject<T, F>, R>
-    : MergedObject<T, F>
-  : T;
+type Ref = WeakMap<object, unknown>;
 
 type MergedObject<T, S> = [T, S] extends [
   readonly unknown[],
@@ -41,15 +38,22 @@ type MergedObject<T, S> = [T, S] extends [
     ? Omit<T, keyof S> & S
     : S;
 
-type Ref = WeakMap<object, unknown>;
+type DeepMergedObject<
+  T extends object,
+  S extends readonly unknown[],
+> = S extends readonly [infer F, ...infer R]
+  ? MergedObject<T, F> extends object
+    ? DeepMergedObject<MergedObject<T, F>, R>
+    : MergedObject<T, F>
+  : T;
+
+// -----------------------------------------------------------------------------
+// [API]
+// -----------------------------------------------------------------------------
 
 const EMPTY_OPTIONS: O = {};
 const HAS_OWN = Object.prototype.hasOwnProperty;
 const OBJECT_TO_STRING = Object.prototype.toString;
-
-//
-// [API]
-//
 
 export default function gattaiMerge<
   T extends object,
@@ -73,9 +77,9 @@ export default function gattaiMerge(target: unknown, ...args: unknown[]) {
   return result;
 }
 
-//
+// -----------------------------------------------------------------------------
 // [Dispatch]
-//
+// -----------------------------------------------------------------------------
 
 function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
   if (isSame(target, source)) {
@@ -130,12 +134,12 @@ function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
     const result = new Set<unknown>();
     ref.set(source, result); // [Ref.set]
 
-    for (const v of target) {
-      result.add(clone(v, options, ref));
+    for (const item of target) {
+      result.add(clone(item, options, ref));
     }
 
-    for (const v of source) {
-      result.add(clone(v, options, ref));
+    for (const item of source) {
+      result.add(clone(item, options, ref));
     }
 
     return result as T | S;
@@ -157,9 +161,9 @@ function dispatch<T, S>(target: T, source: S, options: O, ref: Ref): T | S {
   return clone(source, options, ref);
 }
 
-//
+// -----------------------------------------------------------------------------
 // [Merge]
-//
+// -----------------------------------------------------------------------------
 
 function merge(
   target: PlainObject,
@@ -482,133 +486,137 @@ function mergeWithDescriptors(
   return placeholder;
 }
 
-//
+// -----------------------------------------------------------------------------
 // [Clone]
-//
+// -----------------------------------------------------------------------------
 
-function clone<T>(value: T, options: O, ref: Ref): T {
-  if (!isObject(value)) {
-    return value;
+function clone<T>(node: T, options: O, ref: Ref): T {
+  if (!isObject(node)) {
+    return node;
   }
 
   // [Ref]
-  const cached = ref.get(value);
+  const cached = ref.get(node);
 
   if (cached !== undefined) {
     return cached as T;
   }
 
-  if (isPlainObject(value)) {
-    const result = Object.create(Object.getPrototypeOf(value)) as PlainObject;
-    ref.set(value, result); // [Ref.set]
+  if (isPlainObject(node)) {
+    const result = Object.create(Object.getPrototypeOf(node)) as PlainObject;
+    ref.set(node, result); // [Ref.set]
 
-    for (const key in value) {
-      if (!HAS_OWN.call(value, key) || isUnsafeKey(key)) {
+    for (const key in node) {
+      if (!HAS_OWN.call(node, key) || isUnsafeKey(key)) {
         continue;
       }
 
-      result[key] = clone(value[key], options, ref);
+      result[key] = clone(node[key], options, ref);
     }
 
     return result as T;
   }
 
   // Array
-  if (Array.isArray(value)) {
+  if (Array.isArray(node)) {
     const result: unknown[] = [];
-    ref.set(value, result); // [Ref.set]
+    ref.set(node, result); // [Ref.set]
 
-    for (let i = 0, l = value.length; i < l; i++) {
-      result[i] = clone(value[i], options, ref);
+    for (let i = 0, l = node.length; i < l; i++) {
+      result[i] = clone(node[i], options, ref);
     }
 
     return result as T;
   }
 
   // Date
-  if (value instanceof Date) {
-    const result = new Date(value.getTime());
-    ref.set(value, result); // [Ref.set]
+  if (node instanceof Date) {
+    const result = new Date(node.getTime());
+    ref.set(node, result); // [Ref.set]
     return result as T;
   }
 
   // RegExp
-  if (value instanceof RegExp) {
-    const result = new RegExp(value.source, value.flags);
-    ref.set(value, result); // [Ref.set]
-    result.lastIndex = value.lastIndex;
+  if (node instanceof RegExp) {
+    const result = new RegExp(node.source, node.flags);
+    ref.set(node, result); // [Ref.set]
+    result.lastIndex = node.lastIndex;
     return result as T;
   }
 
   // ArrayBuffer
-  if (value instanceof ArrayBuffer) {
-    const result = value.slice(0);
-    ref.set(value, result);
+  if (node instanceof ArrayBuffer) {
+    const result = node.slice(0);
+    ref.set(node, result);
     return result as T;
   }
 
   // TypedArray
-  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
-    const Ctor = value.constructor as any;
-    const result = new Ctor(value);
-    ref.set(value, result);
+  if (ArrayBuffer.isView(node) && !(node instanceof DataView)) {
+    const Ctor = node.constructor as new (_: typeof node) => typeof node;
+    const result = new Ctor(node);
+    ref.set(node, result);
     return result as T;
   }
 
   // DataView
-  if (value instanceof DataView) {
-    const result = new DataView(value.buffer.slice(0), value.byteOffset, value.byteLength);
-    ref.set(value, result);
+  if (node instanceof DataView) {
+    const result = new DataView(
+      node.buffer.slice(0),
+      node.byteOffset,
+      node.byteLength,
+    );
+    ref.set(node, result);
     return result as T;
   }
 
   // Error and DOMException
   if (
-    value instanceof Error ||
-    (typeof DOMException !== 'undefined' && value instanceof DOMException)
+    node instanceof Error ||
+    (typeof DOMException !== 'undefined' && node instanceof DOMException)
   ) {
-    const result = cloneError(value);
-    ref.set(value, result); // [Ref.set]
+    const result = cloneError(node);
+    ref.set(node, result); // [Ref.set]
     return result as T;
   }
 
   // Blob
-  if (typeof Blob !== "undefined" && value instanceof Blob) {
-    const result = value.slice(0, value.size, value.type);
-    ref.set(value, result);
+  if (typeof Blob !== 'undefined' && node instanceof Blob) {
+    const result = node.slice(0, node.size, node.type);
+    ref.set(node, result);
     return result as T;
   }
 
   // ImageData
-  if (typeof ImageData !== "undefined" && value instanceof ImageData) {
+  if (typeof ImageData !== 'undefined' && node instanceof ImageData) {
     const result = new ImageData(
-      new Uint8ClampedArray(value.data),
-      value.width,
-      value.height,
+      new Uint8ClampedArray(node.data),
+      node.width,
+      node.height,
     );
-    ref.set(value, result);
+    ref.set(node, result);
     return result as T;
   }
 
   // Map
-  if (value instanceof Map) {
+  if (node instanceof Map) {
     const result = new Map();
-    ref.set(value, result); // [Ref.set]
-    for (const [key, v] of value) {
-      // result.set(key, clone(v, options, ref));
-      result.set(clone(key, options, ref), clone(v, options, ref));
+    ref.set(node, result); // [Ref.set]
+
+    for (const [key, value] of node) {
+      result.set(clone(key, options, ref), clone(value, options, ref));
     }
 
     return result as T;
   }
 
   // Set
-  if (value instanceof Set) {
+  if (node instanceof Set) {
     const result = new Set();
-    ref.set(value, result); // [Ref.set]
+    ref.set(node, result); // [Ref.set]
 
-    for (const v of value) {
-      result.add(clone(v, options, ref));
+    for (const item of node) {
+      result.add(clone(item, options, ref));
     }
 
     return result as T;
@@ -616,19 +624,15 @@ function clone<T>(value: T, options: O, ref: Ref): T {
 
   // With descriptors
   if (options.preserveDescriptors) {
-    return cloneWithDescriptors(value as AnyObject, options, ref) as T;
+    return cloneWithDescriptors(node as AnyObject, options, ref) as T;
   }
 
   // Fallback: unsupported types
-  ref.set(value, value); // [Ref.set]
-  return value;
+  ref.set(node, node); // [Ref.set]
+  return node;
 }
 
-function cloneError(value: unknown): Error {
-  if (!(value instanceof Error)) {
-    throw new TypeError('Expected Error');
-  }
-
+function cloneError(value: Error): Error {
   const name = value.name || 'Error';
   const message = value.message || '';
   let result: Error;
@@ -667,13 +671,13 @@ function cloneError(value: unknown): Error {
 }
 
 function cloneWithDescriptors(
-  value: AnyObject,
+  node: AnyObject,
   options: O,
   ref: Ref,
 ): AnyObject {
-  const result = Object.create(Object.getPrototypeOf(value)) as AnyObject;
-  ref.set(value, result); // [Ref.set]
-  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const result = Object.create(Object.getPrototypeOf(node)) as AnyObject;
+  ref.set(node, result); // [Ref.set]
+  const descriptors = Object.getOwnPropertyDescriptors(node);
   const keys = Reflect.ownKeys(descriptors);
 
   for (let i = 0, l = keys.length; i < l; i++) {
@@ -695,9 +699,9 @@ function cloneWithDescriptors(
   return result;
 }
 
-//
+// -----------------------------------------------------------------------------
 // [Utils]
-//
+// -----------------------------------------------------------------------------
 
 function isGattaiMergeOptions(value: unknown): value is O {
   if (!isPlainObject(value)) {
