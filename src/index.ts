@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.0
+ * @version 3.1.1
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -285,7 +285,7 @@ function fastMerge(
   return result ?? target;
 }
 
-const arrayStrategies: Record<
+const arrayMergeFunctions: Record<
   'replace' | 'concat' | 'merge',
   ArrayMergeFunction
 > = {
@@ -365,7 +365,7 @@ function mergeArray(
     return source.slice();
   }
 
-  return (typeof arrays !== 'function' ? arrayStrategies[arrays] : arrays)(
+  return (typeof arrays !== 'function' ? arrayMergeFunctions[arrays] : arrays)(
     target,
     source,
     createArrayContext(options, ref),
