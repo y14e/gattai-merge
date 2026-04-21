@@ -46,7 +46,7 @@ interface GattaiMergeOptions {
 * `'replace'` (default): replace target array (shallow copy)
 * `'concat'`: concatenate arrays
 * `'merge'`: deep merge by index
-* `function`: custom merge strategy
+* `function`: custom merge function
 
 #### ArrayMergeFunction
 
@@ -84,7 +84,7 @@ type ArrayMergeFunction = (
 
 ## Examples
 
-### Array strategies
+### Array
 
 ```ts
 gattaiMerge([1, 2], [3, 4]);
@@ -97,7 +97,7 @@ gattaiMerge([{ a: 1 }], [{ b: 2 }], { arrays: 'merge' });
 // => [{ a: 1, b: 2 }]
 ```
 
-### Custom array strategy
+### Custom array function
 
 ```ts
 gattaiMerge(
