@@ -46,7 +46,7 @@ interface GattaiMergeOptions {
 * `'replace'` (default): replace target array (shallow copy)
 * `'concat'`: concatenate arrays
 * `'merge'`: deep merge by index
-* `function`: custom merge function
+* `function`: custom merge function (advanced usage)
 
 #### ArrayMergeFunction
 
@@ -97,13 +97,14 @@ gattaiMerge([{ a: 1 }], [{ b: 2 }], { arrays: 'merge' });
 // => [{ a: 1, b: 2 }]
 ```
 
-### Custom array function
+### Custom array merge function
 
 ```ts
 gattaiMerge(
   [{ id: 1, value: 'A' }],
   [{ id: 1, value: 'B' }, { id: 2, value: 'C' }],
   {
+    // merge items by id
     arrays: (target, source, { merge, clone }) => {
       const map = new Map();
 
