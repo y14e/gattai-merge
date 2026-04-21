@@ -43,8 +43,6 @@ interface GattaiMergeOptions {
 
 ### arrays
 
-Controls how arrays are merged.
-
 * `'replace'` (default): replace target array (shallow copy)
 * `'concat'`: concatenate arrays
 * `'merge'`: deep merge by index
@@ -63,8 +61,8 @@ type ArrayMergeFunction = (
 ) => unknown[];
 ```
 
-* `merge`: recursively merge values using gattai's engine
-* `clone`: clone values safely with circular ref handling
+* `merge`: recursively merge values using gattai’s engine
+* `clone`: clone values safely (handles circular refs)
 
 ---
 
@@ -84,8 +82,6 @@ type ArrayMergeFunction = (
 * `false` (default): skip incompatible descriptors
 * `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
 
----
-
 ## Examples
 
 ### Array strategies
@@ -101,12 +97,10 @@ gattaiMerge([{ a: 1 }], [{ b: 2 }], { arrays: 'merge' });
 // => [{ a: 1, b: 2 }]
 ```
 
----
-
 ### Custom array strategy
 
 ```ts
-const result = gattaiMerge(
+gattaiMerge(
   [{ id: 1, value: 'A' }],
   [{ id: 1, value: 'B' }, { id: 2, value: 'C' }],
   {
@@ -129,12 +123,8 @@ const result = gattaiMerge(
     },
   }
 );
-
-console.log(result);
 // => [{ id: 1, value: 'B' }, { id: 2, value: 'C' }]
 ```
-
----
 
 ### Map / Set
 
@@ -146,8 +136,6 @@ gattaiMerge(
 // => Map { 'a' => 1, 'b' => 2 }
 ```
 
----
-
 ### Circular ref
 
 ```ts
@@ -158,8 +146,6 @@ const b = gattaiMerge({}, a);
 
 b.self === b; // true
 ```
-
----
 
 ## ⚠️ Structural Sharing & Mutation Caveat
 
@@ -215,8 +201,6 @@ const safe = result === a ? { ...result } : result;
 This behavior is intentional and aligns with libraries like Immer, prioritizing performance by avoiding unnecessary cloning.
 
 If you require strict immutability guarantees, consider wrapping or extending the API to always return a new object.
-
----
 
 ## Performance
 
