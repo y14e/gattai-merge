@@ -2,11 +2,12 @@
 
 High-performance deep merge with structural sharing. Supports circular ref and complex built-in types.
 
-- ⚡ Fast (copy-on-write, minimal cloning)
-- ♻️ Structural sharing (immutable-friendly)
-- 🔁 Supports circular ref
-- 🧠 Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
-- 🧩 Optional descriptor preservation
+* ⚡ Fast (copy-on-write, minimal cloning)
+* ♻️ Structural sharing (immutable-friendly)
+* 🔁 Supports circular ref
+* 🧠 Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
+* 🧩 Optional descriptor preservation
+* 🧬 Customizable array merge strategies
 
 ## Usage
 
@@ -33,30 +34,57 @@ gattaiMerge(target, ...sources, options)
 
 ```ts
 interface GattaiMergeOptions {
-  arrays?: 'replace' | 'concat' | 'merge';
+  arrays?: 'replace' | 'concat' | 'merge' | ArrayMergeFunction;
   nullish?: 'loose' | 'strict' | 'throw';
   preserveDescriptors?: boolean;
   strictDescriptors?: boolean;
 }
 ```
 
-`arrays`
-- `'replace'` (default): replace target array
-- `'concat'`: concatenate arrays
-- `'merge'`: deep merge by index
+### arrays
 
-`nullish`
-- `'loose'` (default): keep target value if source is nullish
-- `'strict'`: overwrite target value if source is nullish
-- `'throw'`: throw TypeError if source is nullish
+Controls how arrays are merged.
 
-`preserveDescriptors`
- - `false` (default): use standard merge (faster, ignores property descriptors)
- - `true`: preserve property descriptors (getters/setters, etc.)
+* `'replace'` (default): replace target array (shallow copy)
+* `'concat'`: concatenate arrays
+* `'merge'`: deep merge by index
+* `function`: custom merge strategy
 
-`strictDescriptors`
- - `false` (default): skip incompatible descriptors
- - `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
+### ArrayMergeFunction
+
+```ts
+type ArrayMergeFunction = (
+  target: readonly unknown[],
+  source: readonly unknown[],
+  context: {
+    merge: (target: unknown, source: unknown) => unknown;
+    clone: (node: unknown) => unknown;
+  }
+) => unknown[];
+```
+
+* `merge`: recursively merge values using gattai's engine
+* `clone`: clone values safely with circular ref handling
+
+---
+
+### nullish
+
+* `'loose'` (default): keep target value if source is nullish
+* `'strict'`: overwrite target value if source is nullish
+* `'throw'`: throw TypeError if source is nullish
+
+### preserveDescriptors
+
+* `false` (default): use standard merge (faster, ignores property descriptors)
+* `true`: preserve property descriptors (getters/setters, etc.)
+
+### strictDescriptors
+
+* `false` (default): skip incompatible descriptors
+* `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
+
+---
 
 ## Examples
 
@@ -73,6 +101,41 @@ gattaiMerge([{ a: 1 }], [{ b: 2 }], { arrays: 'merge' });
 // => [{ a: 1, b: 2 }]
 ```
 
+---
+
+### Custom array strategy
+
+```ts
+const result = gattaiMerge(
+  [{ id: 1, value: 'A' }],
+  [{ id: 1, value: 'B' }, { id: 2, value: 'C' }],
+  {
+    arrays: (target, source, { merge, clone }) => {
+      const map = new Map();
+
+      for (const item of target) {
+        map.set(item.id, item);
+      }
+
+      for (const item of source) {
+        if (map.has(item.id)) {
+          map.set(item.id, merge(map.get(item.id), item));
+        } else {
+          map.set(item.id, clone(item));
+        }
+      }
+
+      return Array.from(map.values());
+    },
+  }
+);
+
+console.log(result);
+// => [{ id: 1, value: 'B' }, { id: 2, value: 'C' }]
+```
+
+---
+
 ### Map / Set
 
 ```ts
@@ -82,6 +145,8 @@ gattaiMerge(
 );
 // => Map { 'a' => 1, 'b' => 2 }
 ```
+
+---
 
 ### Circular ref
 
@@ -93,6 +158,8 @@ const b = gattaiMerge({}, a);
 
 b.self === b; // true
 ```
+
+---
 
 ## ⚠️ Structural Sharing & Mutation Caveat
 
@@ -124,13 +191,11 @@ console.log(a.x); // 2 (mutated!)
 
 ### When does this happen?
 
-- When merging produces **no effective changes**
-- When merging `Map`, `Set`, or nested structures with identical values
-- When structural sharing is preserved for performance
+* When merging produces **no effective changes**
+* When merging `Map`, `Set`, or nested structures with identical values
+* When structural sharing is preserved for performance
 
 ### How to avoid this
-
-If you need a fully immutable result (always a new object), you have a few options:
 
 #### 1. Force a new object
 
@@ -151,8 +216,10 @@ This behavior is intentional and aligns with libraries like Immer, prioritizing 
 
 If you require strict immutability guarantees, consider wrapping or extending the API to always return a new object.
 
+---
+
 ## Performance
 
-- Avoids unnecessary cloning
-- Only clones changed branches
-- Comparable or faster than typical deep merge libraries in real-world scenarios
+* Avoids unnecessary cloning
+* Only clones changed branches
+* Comparable or faster than typical deep merge libraries in real-world scenarios
