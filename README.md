@@ -34,7 +34,7 @@ gattaiMerge(target, ...sources, options)
 
 ```ts
 interface GattaiMergeOptions {
-  arrays?: 'replace' | 'concat' | 'merge' | function;
+  arrays?: 'replace' | 'concat' | 'merge' | ArrayMergeFunction;
   nullish?: 'loose' | 'strict' | 'throw';
   preserveDescriptors?: boolean;
   strictDescriptors?: boolean;
