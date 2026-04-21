@@ -7,7 +7,7 @@ High-performance deep merge with structural sharing. Supports circular ref and c
 * 🔁 Supports circular ref
 * 🧠 Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
 * 🧩 Optional descriptor preservation
-* 🧬 Customizable array merge strategies
+* 🧬 Customizable array merge functions
 
 ## Usage
 
