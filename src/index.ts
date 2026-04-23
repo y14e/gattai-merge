@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.2
+ * @version 3.1.3
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -86,17 +86,17 @@ export default function gattaiMerge(target: unknown, ...args: unknown[]) {
   let result: unknown = target;
 
   for (let i = 0, l = hasOptions ? length - 1 : length; i < l; i++) {
-    result = dispatch(result, args[i], options, new WeakMap());
+    result = merge(result, args[i], options, new WeakMap());
   }
 
   return result;
 }
 
 // -----------------------------------------------------------------------------
-// [Dispatch]
+// [Merge]
 // -----------------------------------------------------------------------------
 
-function dispatch<T, S>(
+function merge<T, S>(
   target: T,
   source: S,
   options: GattaiMergeOptions,
@@ -168,10 +168,10 @@ function dispatch<T, S>(
   if (isPlainObject(target) && isPlainObject(source)) {
     if (!options.preserveDescriptors) {
       if (isObjectPrototype(target) && isObjectPrototype(source)) {
-        return fastMerge(target, source, options, ref) as T | S;
+        return mergePlainObjectFast(target, source, options, ref) as T | S;
       }
 
-      return merge(target, source, options, ref) as T | S;
+      return mergePlainObject(target, source, options, ref) as T | S;
     }
 
     return mergeWithDescriptors(target, source, options, ref) as T | S;
@@ -181,11 +181,7 @@ function dispatch<T, S>(
   return clone(source, options, ref);
 }
 
-// -----------------------------------------------------------------------------
-// [Merge]
-// -----------------------------------------------------------------------------
-
-function merge(
+function mergePlainObject(
   target: PlainObject,
   source: PlainObject,
   options: GattaiMergeOptions,
@@ -224,7 +220,7 @@ function merge(
       continue;
     }
 
-    const mergedValue = dispatch(targetValue, sourceValue, options, ref);
+    const mergedValue = merge(targetValue, sourceValue, options, ref);
 
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
@@ -246,7 +242,7 @@ function merge(
   return result ?? target;
 }
 
-function fastMerge(
+function mergePlainObjectFast(
   target: PlainObject,
   source: PlainObject,
   options: GattaiMergeOptions,
@@ -273,7 +269,7 @@ function fastMerge(
       continue;
     }
 
-    const mergedValue = dispatch(targetValue, sourceValue, options, ref);
+    const mergedValue = merge(targetValue, sourceValue, options, ref);
 
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
@@ -288,7 +284,7 @@ function fastMerge(
   return result ?? target;
 }
 
-const arrayMergeFunctions: Record<
+const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
   'replace' | 'concat' | 'merge',
   ArrayMergeFunction
 > = {
@@ -342,7 +338,7 @@ function createArrayContext(options: GattaiMergeOptions, ref: Ref) {
     options,
     ref,
     merge: (target: unknown, source: unknown) => {
-      return dispatch(target, source, options, ref);
+      return merge(target, source, options, ref);
     },
     clone: (node: unknown) => {
       return clone(node, options, ref);
@@ -368,11 +364,11 @@ function mergeArray(
     return source.slice();
   }
 
-  return (typeof arrays !== 'function' ? arrayMergeFunctions[arrays] : arrays)(
-    target,
-    source,
-    createArrayContext(options, ref),
-  );
+  return (
+    typeof arrays !== 'function'
+      ? BUILTIN_ARRAY_MERGE_FUNCTIONS[arrays]
+      : arrays
+  )(target, source, createArrayContext(options, ref));
 }
 
 function mergeMap<K, V>(
@@ -396,7 +392,7 @@ function mergeMap<K, V>(
     }
 
     const targetValue = target.get(key) as V;
-    const mergedValue = dispatch(targetValue, sourceValue, options, ref) as V;
+    const mergedValue = merge(targetValue, sourceValue, options, ref) as V;
 
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
@@ -442,7 +438,7 @@ function mergeWithDescriptors(
       const mergedValue =
         targetDesc === undefined || !('value' in targetDesc)
           ? clone(sourceDesc.value, options, ref)
-          : dispatch(
+          : merge(
               targetDesc && 'value' in targetDesc
                 ? targetDesc.value
                 : undefined,
@@ -515,6 +511,18 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
     return cached as T;
   }
 
+  // Array
+  if (Array.isArray(node)) {
+    const result: unknown[] = [];
+    ref.set(node, result); // [Ref.set]
+
+    for (let i = 0, l = node.length; i < l; i++) {
+      result[i] = clone(node[i], options, ref);
+    }
+
+    return result as T;
+  }
+
   // Plain object
   if (isPlainObject(node)) {
     const result = Object.create(Object.getPrototypeOf(node)) as PlainObject;
@@ -531,13 +539,25 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
     return result as T;
   }
 
-  // Array
-  if (Array.isArray(node)) {
-    const result: unknown[] = [];
+  // Map
+  if (node instanceof Map) {
+    const result = new Map();
     ref.set(node, result); // [Ref.set]
 
-    for (let i = 0, l = node.length; i < l; i++) {
-      result[i] = clone(node[i], options, ref);
+    for (const [key, value] of node) {
+      result.set(clone(key, options, ref), clone(value, options, ref));
+    }
+
+    return result as T;
+  }
+
+  // Set
+  if (node instanceof Set) {
+    const result = new Set();
+    ref.set(node, result); // [Ref.set]
+
+    for (const item of node) {
+      result.add(clone(item, options, ref));
     }
 
     return result as T;
@@ -565,23 +585,22 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
     return result as T;
   }
 
-  // TypedArray
-  if (ArrayBuffer.isView(node) && !(node instanceof DataView)) {
-    const Ctor = node.constructor as new (_: typeof node) => typeof node;
-    const result = new Ctor(node);
-    ref.set(node, result); // [Ref.set]
-    return result as T;
-  }
-
-  // DataView
-  if (node instanceof DataView) {
-    const result = new DataView(
-      node.buffer.slice(0),
-      node.byteOffset,
-      node.byteLength,
-    );
-    ref.set(node, result); // [Ref.set]
-    return result as T;
+  // DataView and TypedArray
+  if (ArrayBuffer.isView(node)) {
+    if (node instanceof DataView) {
+      const result = new DataView(
+        node.buffer.slice(0),
+        node.byteOffset,
+        node.byteLength,
+      );
+      ref.set(node, result); // [Ref.set]
+      return result as T;
+    } else {
+      const Ctor = node.constructor as new (_: typeof node) => typeof node;
+      const result = new Ctor(node);
+      ref.set(node, result); // [Ref.set]
+      return result as T;
+    }
   }
 
   // Error and DOMException
@@ -612,25 +631,23 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
     return result as T;
   }
 
-  // Map
-  if (node instanceof Map) {
-    const result = new Map();
+  // URL
+  if (typeof URL !== 'undefined' && node instanceof URL) {
+    const result = new URL(node.href);
     ref.set(node, result); // [Ref.set]
-
-    for (const [key, value] of node) {
-      result.set(clone(key, options, ref), clone(value, options, ref));
-    }
-
     return result as T;
   }
 
-  // Set
-  if (node instanceof Set) {
-    const result = new Set();
+  // URLSearchParams
+  if (
+    typeof URLSearchParams !== 'undefined' &&
+    node instanceof URLSearchParams
+  ) {
+    const result = new URLSearchParams();
     ref.set(node, result); // [Ref.set]
 
-    for (const item of node) {
-      result.add(clone(item, options, ref));
+    for (const [key, value] of node) {
+      result.append(key, value);
     }
 
     return result as T;
