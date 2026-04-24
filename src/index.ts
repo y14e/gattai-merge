@@ -1,5 +1,5 @@
 /**
- * gattai-merge
+ * Gattai Merge
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
