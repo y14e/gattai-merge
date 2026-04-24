@@ -1,4 +1,4 @@
-# gattai-merge
+# Gattai Merge
 
 High-performance deep merge with structural sharing. Supports circular ref and complex built-in types.
 
@@ -61,7 +61,7 @@ type ArrayMergeFunction = (
 ) => unknown[];
 ```
 
-* `merge`: recursively merge values using gattai’s engine
+* `merge`: recursively merge values using Gattai’s engine
 * `clone`: clone values safely (handles circular refs)
 
 ---
