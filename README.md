@@ -64,22 +64,16 @@ type ArrayMergeFunction = (
 * `merge`: recursively merge values using Gattai’s engine
 * `clone`: clone values safely (handles circular refs)
 
----
-
 ### nullish
 
 * `'loose'` (default): keep target value if source is nullish
 * `'strict'`: overwrite target value if source is nullish
 * `'throw'`: throw TypeError if source is nullish
 
----
-
 ### preserveDescriptors
 
 * `false` (default): use standard merge (faster, ignores property descriptors)
 * `true`: preserve property descriptors (getters/setters, etc.)
-
----
 
 ### strictDescriptors
 
@@ -100,8 +94,6 @@ gattaiMerge([1, 2], [3, 4], { arrays: 'concat' });
 gattaiMerge([{ a: 1 }], [{ b: 2 }], { arrays: 'merge' });
 // => [{ a: 1, b: 2 }]
 ```
-
----
 
 ### Custom array merge function
 
@@ -133,8 +125,6 @@ gattaiMerge(
 // => [{ id: 1, value: 'B' }, { id: 2, value: 'C' }]
 ```
 
----
-
 ### Map / Set
 
 ```ts
@@ -144,8 +134,6 @@ gattaiMerge(
 );
 // => Map { 'a' => 1, 'b' => 2 }
 ```
-
----
 
 ### Circular ref
 
@@ -157,8 +145,6 @@ const b = gattaiMerge({}, a);
 
 b.self === b; // true
 ```
-
----
 
 ## ⚠️ Structural Sharing & Mutation Caveat
 
