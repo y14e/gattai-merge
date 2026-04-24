@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.3
+ * @version 3.1.4
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -511,6 +511,11 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
     return cached as T;
   }
 
+  // With descriptors
+  if (options.preserveDescriptors && isPlainObject(node)) {
+    return cloneWithDescriptors(node as AnyObject, options, ref) as T;
+  }
+
   // Array
   if (Array.isArray(node)) {
     const result: unknown[] = [];
@@ -608,7 +613,7 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
     node instanceof Error ||
     (typeof DOMException !== 'undefined' && node instanceof DOMException)
   ) {
-    const result = cloneError(node);
+    const result = cloneError(node, options, ref);
     ref.set(node, result); // [Ref.set]
     return result as T;
   }
@@ -653,17 +658,16 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
     return result as T;
   }
 
-  // With descriptors
-  if (options.preserveDescriptors) {
-    return cloneWithDescriptors(node as AnyObject, options, ref) as T;
-  }
-
   // Fallback: unsupported types
   ref.set(node, node); // [Ref.set]
   return node;
 }
 
-function cloneError(value: Error): Error {
+function cloneError(
+  value: Error,
+  options: GattaiMergeOptions,
+  ref: Ref,
+): Error {
   const name = value.name || 'Error';
   const message = value.message || '';
   let result: Error;
@@ -684,6 +688,10 @@ function cloneError(value: Error): Error {
     default:
       result = new Error(message);
       result.name = name;
+  }
+
+  if (!options.preserveDescriptors && 'cause' in value) {
+    result.cause = clone(result.cause, options, ref);
   }
 
   if (value.stack) {
@@ -718,15 +726,19 @@ function cloneWithDescriptors(
       continue;
     }
 
-    const descriptor = descriptors[
-      key as string | symbol
-    ] as PropertyDescriptor;
+    const descriptor: PropertyDescriptor = { ...descriptors[key] };
 
     if ('value' in descriptor) {
       descriptor.value = clone(descriptor.value, options, ref);
     }
 
-    Object.defineProperty(result, key, descriptor);
+    try {
+      Object.defineProperty(result, key, descriptor);
+    } catch (error) {
+      if (options.strictDescriptors) {
+        throw error;
+      }
+    }
   }
 
   return result;
