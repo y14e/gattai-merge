@@ -9,6 +9,8 @@ High-performance deep merge with structural sharing. Supports circular ref and c
 * 🧩 Optional descriptor preservation
 * 🧬 Customizable array merge functions
 
+---
+
 ## Usage
 
 ```ts
