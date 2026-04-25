@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.9
+ * @version 3.1.10
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -21,11 +21,9 @@ export interface GattaiMergeOptions {
   readonly strictDescriptors?: boolean;
 }
 
+type Object = Record<PropertyKey, unknown>;
+
 type Ref = WeakMap<object, unknown>;
-
-type AnyObject = Record<PropertyKey, unknown>;
-
-type PlainObject = Record<PropertyKey, unknown>;
 
 type MergedObject<T, S> = [T, S] extends [
   readonly unknown[],
@@ -62,7 +60,7 @@ type ArrayContext = {
 // [Constants]
 // -----------------------------------------------------------------------------
 
-const EMPTY_OPTIONS = {} as const satisfies GattaiMergeOptions;
+const EMPTY_OPTIONS = {};
 const { hasOwnProperty: HAS_OWN } = Object.prototype;
 const { toString: OBJECT_TO_STRING } = Object.prototype;
 
@@ -86,7 +84,12 @@ export default function gattaiMerge(target: unknown, ...args: unknown[]) {
   let result: unknown = target;
 
   for (let i = 0, l = hasOptions ? length - 1 : length; i < l; i++) {
-    result = merge(result, args[i], options, new WeakMap());
+    result = merge(
+      result,
+      args[i],
+      options as GattaiMergeOptions,
+      new WeakMap(),
+    );
   }
 
   return result;
@@ -96,12 +99,12 @@ export default function gattaiMerge(target: unknown, ...args: unknown[]) {
 // [Merge]
 // -----------------------------------------------------------------------------
 
-function merge<T, S>(
-  target: T,
-  source: S,
+function merge(
+  target: unknown,
+  source: unknown,
   options: GattaiMergeOptions,
   ref: Ref,
-): T | S {
+): unknown {
   if (isSame(target, source)) {
     return target;
   }
@@ -111,7 +114,7 @@ function merge<T, S>(
     const nullish = options.nullish ?? 'loose';
 
     if (nullish === 'strict') {
-      return source as S;
+      return source;
     }
 
     if (nullish === 'throw') {
@@ -122,13 +125,13 @@ function merge<T, S>(
   }
 
   if (target == null) {
-    return clone(source, options, ref) as S;
+    return clone(source, options, ref);
   }
 
   const sourceIsObject = isObject(source);
 
   if (!isObject(target) || !sourceIsObject) {
-    return sourceIsObject ? (clone(source, options, ref) as S) : source;
+    return sourceIsObject ? clone(source, options, ref) : source;
   }
 
   if (Object.isFrozen(target)) {
@@ -139,15 +142,15 @@ function merge<T, S>(
   const cached = ref.get(source);
 
   if (cached !== undefined) {
-    return cached as S;
+    return cached;
   }
 
   if (Array.isArray(target) && Array.isArray(source)) {
-    return mergeArray(target, source, options, ref) as T | S;
+    return mergeArray(target, source, options, ref);
   }
 
   if (target instanceof Map && source instanceof Map) {
-    return mergeMap(target, source, options, ref) as T | S;
+    return mergeMap(target, source, options, ref);
   }
 
   if (target instanceof Set && source instanceof Set) {
@@ -162,35 +165,45 @@ function merge<T, S>(
       result.add(clone(item, options, ref));
     }
 
-    return result as T | S;
+    return result;
   }
 
   if (isPlainObject(target) && isPlainObject(source)) {
     if (!options.preserveDescriptors) {
       if (isObjectPrototype(target) && isObjectPrototype(source)) {
-        return mergePlainObjectFast(target, source, options, ref) as T | S;
+        return mergePlainObjectFast(
+          target as Object,
+          source as Object,
+          options,
+          ref,
+        );
       }
 
-      return mergePlainObject(target, source, options, ref) as T | S;
+      return mergePlainObject(target as Object, source as Object, options, ref);
     }
 
-    return mergeWithDescriptors(target, source, options, ref) as T | S;
+    return mergeWithDescriptors(
+      target as Object,
+      source as Object,
+      options,
+      ref,
+    );
   }
 
   // Fallback: unmergeable types
-  return clone(source, options, ref) as S;
+  return clone(source, options, ref);
 }
 
 function mergePlainObject(
-  target: PlainObject,
-  source: PlainObject,
+  target: Object,
+  source: Object,
   options: GattaiMergeOptions,
   ref: Ref,
-): PlainObject {
+): Object {
   ref.set(source, target); // [Ref.set]
   let targetKeys: string[] | null = null;
   const sourceKeys = Reflect.ownKeys(source);
-  let result: PlainObject | null = null;
+  let result: Object | null = null;
   const proto = Object.getPrototypeOf(target);
 
   for (let i = 0, l = sourceKeys.length; i < l; i++) {
@@ -200,12 +213,12 @@ function mergePlainObject(
       continue;
     }
 
-    const targetValue = (target as AnyObject)[sourceKey];
-    const sourceValue = (source as AnyObject)[sourceKey];
+    const targetValue = (target as Object)[sourceKey];
+    const sourceValue = (source as Object)[sourceKey];
 
     if (!HAS_OWN.call(target, sourceKey)) {
       if (result === null) {
-        result = Object.create(proto) as PlainObject;
+        result = Object.create(proto) as Object;
         targetKeys ??= Object.keys(target);
 
         for (let j = 0, m = targetKeys.length; j < m; j++) {
@@ -216,7 +229,7 @@ function mergePlainObject(
         ref.set(source, result); // [Ref.set]
       }
 
-      (result as AnyObject)[sourceKey] = clone(sourceValue, options, ref);
+      (result as Object)[sourceKey] = clone(sourceValue, options, ref);
       continue;
     }
 
@@ -224,7 +237,7 @@ function mergePlainObject(
 
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
-        result = Object.create(proto) as PlainObject;
+        result = Object.create(proto) as Object;
         targetKeys ??= Object.keys(target);
 
         for (let j = 0, m = targetKeys.length; j < m; j++) {
@@ -235,7 +248,7 @@ function mergePlainObject(
         ref.set(source, result); // [Ref.set]
       }
 
-      (result as AnyObject)[sourceKey] = mergedValue;
+      (result as Object)[sourceKey] = mergedValue;
     }
   }
 
@@ -243,13 +256,13 @@ function mergePlainObject(
 }
 
 function mergePlainObjectFast(
-  target: PlainObject,
-  source: PlainObject,
+  target: Object,
+  source: Object,
   options: GattaiMergeOptions,
   ref: Ref,
-): PlainObject {
+): Object {
   ref.set(source, target); // [Ref.set]
-  let result: PlainObject | null = null;
+  let result: Object | null = null;
 
   for (const key in source) {
     if (!HAS_OWN.call(source, key) || isUnsafeKey(key)) {
@@ -402,31 +415,29 @@ function mergeMap<K, V>(
 }
 
 function mergeWithDescriptors(
-  target: AnyObject,
-  source: AnyObject,
+  target: Object,
+  source: Object,
   options: GattaiMergeOptions,
   ref: Ref,
-): AnyObject {
+): Object {
   const placeholder = Object.create(Object.getPrototypeOf(target));
   ref.set(source, placeholder); // [Ref.set]
   const targetDescs = Object.getOwnPropertyDescriptors(target);
   const sourceDescs = Object.getOwnPropertyDescriptors(source);
   const keys = Reflect.ownKeys(sourceDescs);
-  let result: AnyObject | null = null;
+  let result: Object | null = null;
 
   for (let i = 0, l = keys.length; i < l; i++) {
-    const key = keys[i] as string | symbol;
+    const key = keys[i] as PropertyKey;
 
     if (isUnsafeKey(key)) {
       continue;
     }
 
-    const targetDesc = targetDescs[key as string | symbol] as
+    const targetDesc = targetDescs[key as PropertyKey] as
       | PropertyDescriptor
       | undefined;
-    const sourceDesc = sourceDescs[
-      key as string | symbol
-    ] as PropertyDescriptor;
+    const sourceDesc = sourceDescs[key as PropertyKey] as PropertyDescriptor;
 
     if ('value' in sourceDesc) {
       const mergedValue =
@@ -493,21 +504,21 @@ function mergeWithDescriptors(
 // [Clone] (bunshin-clone)
 // -----------------------------------------------------------------------------
 
-function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
+function clone(node: unknown, options: GattaiMergeOptions, ref: Ref): unknown {
   if (!isObject(node)) {
     return node;
   }
 
   // [Ref]
-  const cached = ref.get(node);
+  const cached = ref.get(node as object);
 
   if (cached !== undefined) {
-    return cached as T;
+    return cached;
   }
 
   // With descriptors
   if (options.preserveDescriptors && isPlainObject(node)) {
-    return cloneWithDescriptors(node as AnyObject, options, ref) as T;
+    return cloneWithDescriptors(node as Object, options, ref);
   }
 
   // Array
@@ -519,23 +530,23 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
       result[i] = clone(node[i], options, ref);
     }
 
-    return result as T;
+    return result;
   }
 
   // Plain object
   if (isPlainObject(node)) {
-    const result = Object.create(Object.getPrototypeOf(node)) as PlainObject;
-    ref.set(node, result); // [Ref.set]
+    const result = Object.create(Object.getPrototypeOf(node)) as Object;
+    ref.set(node as object, result); // [Ref.set]
 
-    for (const key in node) {
+    for (const key in node as object) {
       if (!HAS_OWN.call(node, key) || isUnsafeKey(key)) {
         continue;
       }
 
-      result[key] = clone(node[key], options, ref);
+      result[key] = clone((node as Object)[key], options, ref);
     }
 
-    return result as T;
+    return result;
   }
 
   // Map
@@ -547,7 +558,7 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
       result.set(clone(key, options, ref), clone(value, options, ref));
     }
 
-    return result as T;
+    return result;
   }
 
   // Set
@@ -559,14 +570,14 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
       result.add(clone(item, options, ref));
     }
 
-    return result as T;
+    return result;
   }
 
   // Date
   if (node instanceof Date) {
     const result = new Date(node.getTime());
     ref.set(node, result); // [Ref.set]
-    return result as T;
+    return result;
   }
 
   // RegExp
@@ -574,31 +585,32 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
     const result = new RegExp(node.source, node.flags);
     ref.set(node, result); // [Ref.set]
     result.lastIndex = node.lastIndex;
-    return result as T;
+    return result;
   }
 
   // ArrayBuffer
   if (node instanceof ArrayBuffer) {
     const result = node.slice(0);
     ref.set(node, result); // [Ref.set]
-    return result as T;
+    return result;
   }
 
   // DataView and TypedArray
   if (ArrayBuffer.isView(node)) {
+    const { buffer, byteOffset, byteLength } = node;
     if (node instanceof DataView) {
-      const result = new DataView(
-        node.buffer.slice(0),
-        node.byteOffset,
-        node.byteLength,
+      const result = new DataView(buffer.slice(0), byteOffset, byteLength);
+      ref.set(node, result); // [Ref.set]
+      return result;
+    } else {
+      const Ctor = node.constructor as new (
+        buffer: ArrayBufferLike,
+      ) => ArrayBufferView;
+      const result = new Ctor(
+        buffer.slice(byteOffset, byteOffset + byteLength),
       );
       ref.set(node, result); // [Ref.set]
-      return result as T;
-    } else {
-      const Ctor = node.constructor as new (_: typeof node) => typeof node;
-      const result = new Ctor(node);
-      ref.set(node, result); // [Ref.set]
-      return result as T;
+      return result;
     }
   }
 
@@ -609,14 +621,14 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
   ) {
     const result = cloneError(node, options, ref);
     ref.set(node, result); // [Ref.set]
-    return result as T;
+    return result;
   }
 
   // Blob
   if (typeof Blob !== 'undefined' && node instanceof Blob) {
     const result = node.slice(0, node.size, node.type);
     ref.set(node, result); // [Ref.set]
-    return result as T;
+    return result;
   }
 
   // ImageData
@@ -627,14 +639,14 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
       node.height,
     );
     ref.set(node, result); // [Ref.set]
-    return result as T;
+    return result;
   }
 
   // URL
   if (typeof URL !== 'undefined' && node instanceof URL) {
     const result = new URL(node.href);
     ref.set(node, result); // [Ref.set]
-    return result as T;
+    return result;
   }
 
   // URLSearchParams
@@ -649,11 +661,11 @@ function clone<T>(node: T, options: GattaiMergeOptions, ref: Ref): T {
       result.append(key, value);
     }
 
-    return result as T;
+    return result;
   }
 
   // Fallback: unsupported types
-  ref.set(node, node); // [Ref.set]
+  ref.set(node as object, node); // [Ref.set]
   return node;
 }
 
@@ -685,7 +697,10 @@ function cloneError(
   }
 
   if (!options.preserveDescriptors && 'cause' in value) {
-    result.cause = clone(result.cause, options, ref);
+    const cause = value.cause;
+    if (cause !== undefined) {
+      result.cause = clone(cause, options, ref);
+    }
   }
 
   if (value.stack) {
@@ -704,17 +719,17 @@ function cloneError(
 }
 
 function cloneWithDescriptors(
-  node: AnyObject,
+  node: Object,
   options: GattaiMergeOptions,
   ref: Ref,
-): AnyObject {
-  const result = Object.create(Object.getPrototypeOf(node)) as AnyObject;
+): Object {
+  const result = Object.create(Object.getPrototypeOf(node)) as Object;
   ref.set(node, result); // [Ref.set]
   const descs = Object.getOwnPropertyDescriptors(node);
   const keys = Reflect.ownKeys(descs);
 
   for (let i = 0, l = keys.length; i < l; i++) {
-    const key = keys[i] as string | symbol;
+    const key = keys[i] as PropertyKey;
 
     if (isUnsafeKey(key)) {
       continue;
@@ -742,12 +757,12 @@ function cloneWithDescriptors(
 // [Utils]
 // -----------------------------------------------------------------------------
 
-function isGattaiMergeOptions(value: unknown): value is GattaiMergeOptions {
+function isGattaiMergeOptions(value: unknown): boolean {
   if (!isPlainObject(value)) {
     return false;
   }
 
-  const keys = Object.keys(value);
+  const keys = Object.keys(value as object);
 
   if (keys.length === 0) {
     return true;
@@ -762,15 +777,15 @@ function isGattaiMergeOptions(value: unknown): value is GattaiMergeOptions {
   );
 }
 
-function isObject(value: unknown): value is object {
+function isObject(value: unknown): boolean {
   return typeof value === 'object' && value !== null;
 }
 
-function isObjectPrototype(value: unknown): value is PlainObject {
+function isObjectPrototype(value: unknown): boolean {
   return Object.getPrototypeOf(value) === Object.prototype;
 }
 
-function isPlainObject(value: unknown): value is PlainObject {
+function isPlainObject(value: unknown): boolean {
   return OBJECT_TO_STRING.call(value) === '[object Object]';
 }
 
