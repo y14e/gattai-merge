@@ -48,8 +48,5 @@
   },
   "engines": {
     "node": ">=18"
-  },
-  "dependencies": {
-    "bunshin-clone": "^1.0.5"
   }
 }
