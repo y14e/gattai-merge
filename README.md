@@ -151,7 +151,7 @@ b.self === b; // true
 ## ⚠️ Structural sharing & mutation caveat
 
 <details>
-<summary>Read</summary>
+<summary>Show details</summary>
 
 `gattai-merge` is optimized for performance using structural sharing (copy-on-write).
 Objects are only cloned when a change is actually required.
