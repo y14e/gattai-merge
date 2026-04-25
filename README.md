@@ -80,7 +80,7 @@ gattaiMerge(target, ...sources, options)
 * `false`: skip incompatible descriptors
 * `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
 
---
+---
 
 **🪄 ArrayMergeFunction**
  
