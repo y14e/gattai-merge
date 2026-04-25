@@ -17,15 +17,15 @@ High-performance deep merge utility with structural sharing. Supports circular r
 npm i gattai-merge
 ```
 
-### CDN
+## CDN
 
-#### ESM
+### ESM
 
 ```ts
 import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge/+esm';
 ```
 
-#### UMD
+### UMD
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/gattai-merge"></script>
