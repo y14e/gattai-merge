@@ -148,7 +148,10 @@ const b = gattaiMerge({}, a);
 b.self === b; // true
 ```
 
-## ⚠️ Structural Sharing & Mutation Caveat
+## ⚠️ Structural sharing & mutation caveat
+
+<details>
+<summary>Read</summary>
 
 `gattai-merge` is optimized for performance using structural sharing (copy-on-write).
 Objects are only cloned when a change is actually required.
@@ -202,6 +205,7 @@ const safe = result === a ? { ...result } : result;
 This behavior is intentional and aligns with libraries like Immer, prioritizing performance by avoiding unnecessary cloning.
 
 If you require strict immutability guarantees, consider wrapping or extending the API to always return a new object.
+</details>
 
 ## Performance
 
