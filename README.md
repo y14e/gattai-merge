@@ -1,15 +1,29 @@
 # Gattai Merge
 
-High-performance deep merge with structural sharing. Supports circular ref and complex built-in types.
+High-performance deep merge utility with structural sharing. Supports circular ref and complex built-in types.
 
-* ⚡ Fast (copy-on-write, minimal cloning)
-* ♻️ Structural sharing (immutable-friendly)
-* 🔁 Supports circular ref
-* 🧠 Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
-* 🧩 Optional descriptor preservation
-* 🧬 Customizable array merge functions
+* Fast (copy-on-write, minimal cloning)
+* Structural sharing (immutable-friendly)
+* Supports circular ref
+* Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
+* Customizable array merge functions
+* Optional descriptor preservation
 
 ---
+
+## Install
+
+```bash
+npm i gattai-merge
+```
+
+```ts
+// npm
+import gattaiMerge from 'gattai-merge';
+
+// CDN
+import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge/+esm';
+```
 
 ## Usage
 
@@ -35,52 +49,47 @@ gattaiMerge(target, ...sources, options)
 ## Options
 
 ```ts
-interface GattaiMergeOptions {
-  arrays?: 'replace' | 'concat' | 'merge' | ArrayMergeFunction;
-  nullish?: 'loose' | 'strict' | 'throw';
-  preserveDescriptors?: boolean;
-  strictDescriptors?: boolean;
+{
+  arrays: 'replace';
+  nullish: 'loose';
+  preserveDescriptors: false;
+  strictDescriptors: false;
 }
 ```
 
-### arrays
+**arrays**
 
-* `'replace'` (default): replace target array (shallow copy)
+* `'replace'`: replace target array (shallow copy)
 * `'concat'`: concatenate arrays
 * `'merge'`: deep merge by index
-* `function`: custom merge function (advanced usage)
+* `ArrayMergeFunction`: custom array merge function (advanced usage)
 
-#### ArrayMergeFunction
+**nullish**
 
-```ts
-type ArrayMergeFunction = (
-  target: readonly unknown[],
-  source: readonly unknown[],
-  context: {
-    merge: (target: unknown, source: unknown) => unknown;
-    clone: (node: unknown) => unknown;
-  }
-) => unknown[];
-```
-
-* `merge`: recursively merge values using Gattai’s engine
-* `clone`: clone values safely (handles circular refs)
-
-### nullish
-
-* `'loose'` (default): keep target value if source is nullish
+* `'loose'`: keep target value if source is nullish
 * `'strict'`: overwrite target value if source is nullish
 * `'throw'`: throw TypeError if source is nullish
 
-### preserveDescriptors
+**preserveDescriptors**
 
-* `false` (default): use standard merge (faster, ignores property descriptors)
+* `false`: use standard merge (faster, ignores property descriptors)
 * `true`: preserve property descriptors (getters/setters, etc.)
 
-### strictDescriptors
+**strictDescriptors**
 
-* `false` (default): skip incompatible descriptors
+* `false`: skip incompatible descriptors
 * `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
+
+---
+
+**🪄 ArrayMergeFunction**
+ 
+```ts
+(target, source, {
+  merge: (target, source) => {};
+  clone: (node) => {};
+}) => {};
+```
 
 ## Examples
 
@@ -137,28 +146,18 @@ gattaiMerge(
 // => Map { 'a' => 1, 'b' => 2 }
 ```
 
-### Circular ref
+## Caution
 
-```ts
-const a: any = {};
-a.self = a;
+Gattai Merge is optimized for performance using structural sharing (copy-on-write).
 
-const b = gattaiMerge({}, a);
-
-b.self === b; // true
-```
-
-## ⚠️ Structural sharing & mutation caveat
-
-<details>
-<summary>Show details</summary>
-
-`gattai-merge` is optimized for performance using structural sharing (copy-on-write).
 Objects are only cloned when a change is actually required.
 
+<details>
+<summary>Read more</summary>
+  
 ### What this implies
 
-If no changes occur during merging, the original `target` object is returned as-is:
+If no changes occur during merging, the original target object is returned as-is:
 
 ```ts
 const a = { x: 1 };
@@ -169,7 +168,7 @@ const result = gattaiMerge(a, b);
 result === a; // true
 ```
 
-### ⚠️ Important
+### Important
 
 Because the same ref may be returned, mutating the result can also mutate the original input:
 
@@ -182,7 +181,7 @@ console.log(a.x); // 2 (mutated!)
 ### When does this happen?
 
 * When merging produces **no effective changes**
-* When merging `Map`, `Set`, or nested structures with identical values
+* When merging Map, Set, or nested structures with identical values
 * When structural sharing is preserved for performance
 
 ### How to avoid this
