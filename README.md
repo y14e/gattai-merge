@@ -17,20 +17,13 @@ High-performance deep merge utility with structural sharing. Supports circular r
 npm i gattai-merge
 ```
 
-## CDN
-
-### ESM
-
 ```ts
+// npm
+import gattaiMerge from 'gattai-merge';
+
+// CDN
 import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge/+esm';
 ```
-
-### UMD
-
-```html
-<script src="https://cdn.jsdelivr.net/npm/gattai-merge"></script>
-```
-
 
 ## Usage
 
@@ -56,52 +49,45 @@ gattaiMerge(target, ...sources, options)
 ## Options
 
 ```ts
-interface GattaiMergeOptions {
-  arrays?: 'replace' | 'concat' | 'merge' | ArrayMergeFunction;
-  nullish?: 'loose' | 'strict' | 'throw';
-  preserveDescriptors?: boolean;
-  strictDescriptors?: boolean;
+{
+  arrays: 'replace';
+  nullish: 'loose';
+  preserveDescriptors: false;
+  strictDescriptors: false;
 }
 ```
 
-### arrays
+**arrays**
 
-* `'replace'` (default): replace target array (shallow copy)
+* `'replace'`: replace target array (shallow copy)
 * `'concat'`: concatenate arrays
 * `'merge'`: deep merge by index
-* `function`: custom merge function (advanced usage)
+* `ArrayMergeFunction`: custom array merge function (advanced usage)
 
-#### ArrayMergeFunction
+**nullish**
 
-```ts
-type ArrayMergeFunction = (
-  target: readonly unknown[],
-  source: readonly unknown[],
-  context: {
-    merge: (target: unknown, source: unknown) => unknown;
-    clone: (node: unknown) => unknown;
-  }
-) => unknown[];
-```
-
-* `merge`: recursively merge values using Gattai’s engine
-* `clone`: clone values safely (handles circular refs)
-
-### nullish
-
-* `'loose'` (default): keep target value if source is nullish
+* `'loose'`: keep target value if source is nullish
 * `'strict'`: overwrite target value if source is nullish
 * `'throw'`: throw TypeError if source is nullish
 
-### preserveDescriptors
+**preserveDescriptors**
 
-* `false` (default): use standard merge (faster, ignores property descriptors)
+* `false`: use standard merge (faster, ignores property descriptors)
 * `true`: preserve property descriptors (getters/setters, etc.)
 
-### strictDescriptors
+**strictDescriptors**
 
-* `false` (default): skip incompatible descriptors
+* `false`: skip incompatible descriptors
 * `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
+
+**🪄 ArrayMergeFunction**
+
+```ts
+(target, source, {
+  merge: (target, source) => {};
+  clone: (node) => {};
+}) => {};
+```
 
 ## Examples
 
@@ -156,17 +142,6 @@ gattaiMerge(
   new Map([['b', 2]])
 );
 // => Map { 'a' => 1, 'b' => 2 }
-```
-
-### Circular ref
-
-```ts
-const a: any = {};
-a.self = a;
-
-const b = gattaiMerge({}, a);
-
-b.self === b; // true
 ```
 
 ## ⚠️ Structural sharing & mutation caveat
