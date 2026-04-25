@@ -9,6 +9,8 @@ High-performance deep merge with structural sharing. Supports circular ref and c
 * 🧩 Optional descriptor preservation
 * 🧬 Customizable array merge functions
 
+---
+
 ## Usage
 
 ```ts
@@ -63,8 +65,6 @@ type ArrayMergeFunction = (
 
 * `merge`: recursively merge values using Gattai’s engine
 * `clone`: clone values safely (handles circular refs)
-
----
 
 ### nullish
 
