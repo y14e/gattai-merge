@@ -1,6 +1,6 @@
 # Gattai Merge
 
-High-performance deep merge with structural sharing. Supports circular ref and complex built-in types.
+High-performance deep merge utility with structural sharing. Supports circular ref and complex built-in types.
 
 * ⚡ Fast (copy-on-write, minimal cloning)
 * ♻️ Structural sharing (immutable-friendly)
