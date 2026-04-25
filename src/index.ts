@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.5
+ * @version 3.1.6
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -294,10 +294,7 @@ const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
   'replace' | 'concat' | 'merge',
   ArrayMergeFunction
 > = {
-  replace: (_target, source) => {
-    // return clone(source, options, ref);
-    return source.slice();
-  },
+  replace: (_target, source) => source.slice(),
 
   concat: (target, source, { clone }) => {
     const result = new Array(target.length + source.length);
@@ -343,12 +340,9 @@ function createArrayContext(options: GattaiMergeOptions, ref: Ref) {
   return {
     options,
     ref,
-    merge: (target: unknown, source: unknown) => {
-      return merge(target, source, options, ref);
-    },
-    clone: (node: unknown) => {
-      return clone(node, options, ref);
-    },
+    merge: (target: unknown, source: unknown) =>
+      merge(target, source, options, ref),
+    clone: (node: unknown) => clone(node, options, ref),
   };
 }
 
@@ -516,14 +510,13 @@ function isGattaiMergeOptions(value: unknown): value is GattaiMergeOptions {
     return true;
   }
 
-  return keys.every((key) => {
-    return (
+  return keys.every(
+    (key) =>
       key === 'arrays' ||
       key === 'nullish' ||
       key === 'preserveDescriptors' ||
-      key === 'strictDescriptors'
-    );
-  });
+      key === 'strictDescriptors',
+  );
 }
 
 function isObject(value: unknown): value is object {
