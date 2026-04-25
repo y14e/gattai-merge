@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.6
+ * @version 3.1.7
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -14,7 +14,7 @@
 // [Imports]
 // -----------------------------------------------------------------------------
 
-import clone, { cloneWithDescriptors } from 'bunshin-clone';
+import { clone, cloneWithDescriptors } from 'bunshin-clone';
 
 // -----------------------------------------------------------------------------
 // [Types]
