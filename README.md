@@ -81,7 +81,7 @@ gattaiMerge(target, ...sources, options)
 * `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
 
 **🪄 ArrayMergeFunction**
-
+ 
 ```ts
 (target, source, {
   merge: (target, source) => {};
@@ -144,17 +144,18 @@ gattaiMerge(
 // => Map { 'a' => 1, 'b' => 2 }
 ```
 
-## ⚠️ Structural sharing & mutation caveat
+## Caution
 
-<details>
-<summary>Show details</summary>
+Gattai Merge is optimized for performance using structural sharing (copy-on-write).
 
-`gattai-merge` is optimized for performance using structural sharing (copy-on-write).
 Objects are only cloned when a change is actually required.
 
+<details>
+<summary>Read more</summary>
+  
 ### What this implies
 
-If no changes occur during merging, the original `target` object is returned as-is:
+If no changes occur during merging, the original target object is returned as-is:
 
 ```ts
 const a = { x: 1 };
@@ -165,7 +166,7 @@ const result = gattaiMerge(a, b);
 result === a; // true
 ```
 
-### ⚠️ Important
+### Important
 
 Because the same ref may be returned, mutating the result can also mutate the original input:
 
@@ -178,7 +179,7 @@ console.log(a.x); // 2 (mutated!)
 ### When does this happen?
 
 * When merging produces **no effective changes**
-* When merging `Map`, `Set`, or nested structures with identical values
+* When merging Map, Set, or nested structures with identical values
 * When structural sharing is preserved for performance
 
 ### How to avoid this
