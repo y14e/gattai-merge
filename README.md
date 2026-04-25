@@ -6,8 +6,8 @@ High-performance deep merge utility with structural sharing. Supports circular r
 * Structural sharing (immutable-friendly)
 * Supports circular ref
 * Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
-* Optional descriptor preservation
 * Customizable array merge functions
+* Optional descriptor preservation
 
 ---
 
