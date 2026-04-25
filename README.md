@@ -2,14 +2,35 @@
 
 High-performance deep merge utility with structural sharing. Supports circular ref and complex built-in types.
 
-* ⚡ Fast (copy-on-write, minimal cloning)
-* ♻️ Structural sharing (immutable-friendly)
-* 🔁 Supports circular ref
-* 🧠 Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
-* 🧩 Optional descriptor preservation
-* 🧬 Customizable array merge functions
+* Fast (copy-on-write, minimal cloning)
+* Structural sharing (immutable-friendly)
+* Supports circular ref
+* Handles Map, Set, Array, TypedArray, Date, RegExp, etc.
+* Optional descriptor preservation
+* Customizable array merge functions
 
 ---
+
+## Install
+
+```bash
+npm i gattai-merge
+```
+
+### CDN
+
+#### ESM
+
+```ts
+import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge/+esm';
+```
+
+#### UMD
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/gattai-merge"></script>
+```
+
 
 ## Usage
 
