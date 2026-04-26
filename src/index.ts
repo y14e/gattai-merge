@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.11
+ * @version 3.1.12
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -62,7 +62,6 @@ type ArrayContext = {
 
 const EMPTY_OPTIONS = {};
 const { hasOwnProperty: HAS_OWN } = Object.prototype;
-const { toString: OBJECT_TO_STRING } = Object.prototype;
 
 // -----------------------------------------------------------------------------
 // [API]
@@ -84,12 +83,7 @@ export default function gattaiMerge(target: unknown, ...args: unknown[]) {
   let result: unknown = target;
 
   for (let i = 0, l = hasOptions ? length - 1 : length; i < l; i++) {
-    result = merge(
-      result,
-      args[i],
-      options,
-      new WeakMap(),
-    );
+    result = merge(result, args[i], options, new WeakMap());
   }
 
   return result;
@@ -202,65 +196,61 @@ function mergePlainObject(
 ) {
   ref.set(source, target); // [Ref.set]
   let targetKeys: string[] | null = null;
-  const sourceKeys = Reflect.ownKeys(source);
   let result: Object | null = null;
   const proto = Object.getPrototypeOf(target);
 
-  for (let i = 0, l = sourceKeys.length; i < l; i++) {
-    const sourceKey = sourceKeys[i];
-
-    if (!sourceKey || isUnsafeKey(sourceKey)) {
-      continue;
+  forEachOwnKey(source, (sourceKey) => {
+    if (isUnsafeKey(sourceKey)) {
+      return;
     }
 
     const targetValue = target[sourceKey];
     const sourceValue = source[sourceKey];
 
-    if (!HAS_OWN.call(target, sourceKey)) {
+    if (HAS_OWN.call(target, sourceKey)) {
+      const mergedValue = merge(targetValue, sourceValue, options, ref);
+
+      if (!isSame(mergedValue, targetValue)) {
+        if (result === null) {
+          result = Object.create(proto);
+
+          if (!result) {
+            return;
+          }
+
+          targetKeys ??= Object.keys(target);
+
+          for (let j = 0, m = targetKeys.length; j < m; j++) {
+            const k = targetKeys[j] as string;
+            result[k] = target[k];
+          }
+
+          ref.set(source, result);
+        }
+
+        result[sourceKey] = mergedValue;
+      }
+    } else {
       if (result === null) {
         result = Object.create(proto);
 
         if (!result) {
-          continue;
+          return;
         }
 
         targetKeys ??= Object.keys(target);
 
         for (let j = 0, m = targetKeys.length; j < m; j++) {
-          const targetKey = targetKeys[j] as string;
-          result[targetKey] = target[targetKey];
+          const k = targetKeys[j] as string;
+          result[k] = target[k];
         }
 
-        ref.set(source, result); // [Ref.set]
+        ref.set(source, result);
       }
 
       result[sourceKey] = clone(sourceValue, options, ref);
-      continue;
     }
-
-    const mergedValue = merge(targetValue, sourceValue, options, ref);
-
-    if (!isSame(mergedValue, targetValue)) {
-      if (result === null) {
-        result = Object.create(proto);
-
-        if (!result) {
-          continue;
-        }
-
-        targetKeys ??= Object.keys(target);
-
-        for (let j = 0, m = targetKeys.length; j < m; j++) {
-          const targetKey = targetKeys[j] as string;
-          result[targetKey] = target[targetKey];
-        }
-
-        ref.set(source, result); // [Ref.set]
-      }
-
-      result[sourceKey] = mergedValue;
-    }
-  }
+  });
 
   return result ?? target;
 }
@@ -434,21 +424,18 @@ function mergeWithDescriptors(
   ref.set(source, placeholder); // [Ref.set]
   const targetDescs = Object.getOwnPropertyDescriptors(target);
   const sourceDescs = Object.getOwnPropertyDescriptors(source);
-  const keys = Reflect.ownKeys(sourceDescs);
   let result: Object | null = null;
 
-  for (let i = 0, l = keys.length; i < l; i++) {
-    const key = keys[i];
-
+  forEachOwnKey(sourceDescs, (key) => {
     if (!key || isUnsafeKey(key)) {
-      continue;
+      return;
     }
 
     const targetDesc = targetDescs[key];
     const sourceDesc = sourceDescs[key];
 
     if (!sourceDesc) {
-      continue;
+      return;
     }
 
     if ('value' in sourceDesc) {
@@ -479,7 +466,7 @@ function mergeWithDescriptors(
           );
         }
 
-        continue;
+        return;
       }
 
       if (
@@ -497,7 +484,7 @@ function mergeWithDescriptors(
       result ??= cloneWithDescriptors(target, options, ref);
       Object.defineProperty(result, key, sourceDesc);
     }
-  }
+  });
 
   if (result === null) {
     ref.set(source, target); // [Ref.set]
@@ -739,17 +726,14 @@ function cloneWithDescriptors(
   const result = Object.create(Object.getPrototypeOf(node));
   ref.set(node, result); // [Ref.set]
   const descs = Object.getOwnPropertyDescriptors(node);
-  const keys: PropertyKey[] = Reflect.ownKeys(descs);
 
-  for (let i = 0, l = keys.length; i < l; i++) {
-    const key = keys[i];
-
+  forEachOwnKey(descs, (key) => {
     if (!key) {
-      continue;
+      return;
     }
 
     if (isUnsafeKey(key)) {
-      continue;
+      return;
     }
 
     const desc = { ...descs[key] };
@@ -765,7 +749,7 @@ function cloneWithDescriptors(
         throw error;
       }
     }
-  }
+  });
 
   return result;
 }
@@ -773,6 +757,27 @@ function cloneWithDescriptors(
 // -----------------------------------------------------------------------------
 // [Utils]
 // -----------------------------------------------------------------------------
+
+function forEachOwnKey(
+  object: object,
+  callback: (key: string | symbol) => void,
+) {
+  for (const key of Object.keys(object)) {
+    callback(key);
+  }
+
+  const symbols = Object.getOwnPropertySymbols(object);
+
+  for (let i = 0, l = symbols.length; i < l; i++) {
+    const symbol = symbols[i];
+
+    if (!symbol) {
+      continue;
+    }
+
+    callback(symbol);
+  }
+}
 
 function isGattaiMergeOptions(value: unknown) {
   if (!isPlainObject(value)) {
@@ -803,7 +808,12 @@ function isObjectPrototype(value: unknown) {
 }
 
 function isPlainObject(value: unknown) {
-  return OBJECT_TO_STRING.call(value) === '[object Object]';
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 function isSame(a: unknown, b: unknown) {
