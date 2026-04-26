@@ -698,6 +698,7 @@ function cloneError(
 
   if (!options.preserveDescriptors && 'cause' in value) {
     const cause = value.cause;
+
     if (cause !== undefined) {
       result.cause = clone(cause, options, ref);
     }
