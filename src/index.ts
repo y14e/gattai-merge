@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.13
+ * @version 3.1.14
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -212,12 +212,7 @@ function mergePlainObject(
 
       if (!isSame(mergedValue, targetValue)) {
         if (result === null) {
-          result = Object.create(proto);
-
-          if (!result) {
-            return;
-          }
-
+          result = Object.create(proto) as Object;
           targetKeys ??= Object.keys(target);
 
           for (let j = 0, m = targetKeys.length; j < m; j++) {
@@ -232,12 +227,7 @@ function mergePlainObject(
       }
     } else {
       if (result === null) {
-        result = Object.create(proto);
-
-        if (!result) {
-          return;
-        }
-
+        result = Object.create(proto) as Object;
         targetKeys ??= Object.keys(target);
 
         for (let j = 0, m = targetKeys.length; j < m; j++) {
@@ -427,16 +417,12 @@ function mergeWithDescriptors(
   let result: Object | null = null;
 
   forEachOwnKey(sourceDescs, (key) => {
-    if (!key || isUnsafeKey(key)) {
+    if (isUnsafeKey(key)) {
       return;
     }
 
     const targetDesc = targetDescs[key];
-    const sourceDesc = sourceDescs[key];
-
-    if (!sourceDesc) {
-      return;
-    }
+    const sourceDesc = sourceDescs[key] as PropertyDescriptor;
 
     if ('value' in sourceDesc) {
       const mergedValue =
@@ -734,10 +720,6 @@ function cloneWithDescriptors(
   const descs = Object.getOwnPropertyDescriptors(node);
 
   forEachOwnKey(descs, (key) => {
-    if (!key) {
-      return;
-    }
-
     if (isUnsafeKey(key)) {
       return;
     }
@@ -775,13 +757,7 @@ function forEachOwnKey(
   const symbols = Object.getOwnPropertySymbols(object);
 
   for (let i = 0, l = symbols.length; i < l; i++) {
-    const symbol = symbols[i];
-
-    if (!symbol) {
-      continue;
-    }
-
-    callback(symbol);
+    callback(symbols[i] as symbol);
   }
 }
 
