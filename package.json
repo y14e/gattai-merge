@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "3.1.14",
+  "version": "3.2.0",
   "description": "High-performance deep merge utility with structural sharing",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -68,5 +68,12 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "deepmerge": "^4.3.1",
+    "deepmerge-ts": "^7.1.5",
+    "immer": "^11.1.4",
+    "lodash.merge": "^4.6.2",
+    "tinybench": "^6.0.0"
   }
 }

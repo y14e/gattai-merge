@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.14
+ * @version 3.2.0
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -252,7 +252,7 @@ function mergePlainObjectFast(
   ref: Ref,
 ) {
   ref.set(source, target); // [Ref.set]
-  let result: Object | null = null;
+  let result = null;
 
   for (const key in source) {
     if (!HAS_OWN.call(source, key) || isUnsafeKey(key)) {
@@ -261,6 +261,10 @@ function mergePlainObjectFast(
 
     const targetValue = target[key];
     const sourceValue = source[key];
+
+    if (targetValue === sourceValue) {
+      continue;
+    }
 
     if (!HAS_OWN.call(target, key)) {
       if (result === null) {
@@ -272,9 +276,24 @@ function mergePlainObjectFast(
       continue;
     }
 
+    if (
+      sourceValue === null ||
+      typeof sourceValue !== 'object' ||
+      targetValue === null ||
+      typeof targetValue !== 'object'
+    ) {
+      if (result === null) {
+        result = { ...target };
+        ref.set(source, result); // [Ref.set]
+      }
+
+      result[key] = sourceValue;
+      continue;
+    }
+
     const mergedValue = merge(targetValue, sourceValue, options, ref);
 
-    if (!isSame(mergedValue, targetValue)) {
+    if (mergedValue !== targetValue) {
       if (result === null) {
         result = { ...target };
         ref.set(source, result); // [Ref.set]
