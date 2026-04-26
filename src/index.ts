@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.1.10
+ * @version 3.1.11
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -80,14 +80,14 @@ export default function gattaiMerge(target: unknown, ...args: unknown[]) {
   const length = args.length;
   const last = length > 0 ? args[length - 1] : undefined;
   const hasOptions = isGattaiMergeOptions(last);
-  const options = hasOptions ? last : EMPTY_OPTIONS;
+  const options = (hasOptions ? last : EMPTY_OPTIONS) as GattaiMergeOptions;
   let result: unknown = target;
 
   for (let i = 0, l = hasOptions ? length - 1 : length; i < l; i++) {
     result = merge(
       result,
       args[i],
-      options as GattaiMergeOptions,
+      options,
       new WeakMap(),
     );
   }
@@ -104,7 +104,7 @@ function merge(
   source: unknown,
   options: GattaiMergeOptions,
   ref: Ref,
-): unknown {
+) {
   if (isSame(target, source)) {
     return target;
   }
@@ -199,7 +199,7 @@ function mergePlainObject(
   source: Object,
   options: GattaiMergeOptions,
   ref: Ref,
-): Object {
+) {
   ref.set(source, target); // [Ref.set]
   let targetKeys: string[] | null = null;
   const sourceKeys = Reflect.ownKeys(source);
@@ -207,18 +207,23 @@ function mergePlainObject(
   const proto = Object.getPrototypeOf(target);
 
   for (let i = 0, l = sourceKeys.length; i < l; i++) {
-    const sourceKey = sourceKeys[i] as PropertyKey;
+    const sourceKey = sourceKeys[i];
 
-    if (isUnsafeKey(sourceKey)) {
+    if (!sourceKey || isUnsafeKey(sourceKey)) {
       continue;
     }
 
-    const targetValue = (target as Object)[sourceKey];
-    const sourceValue = (source as Object)[sourceKey];
+    const targetValue = target[sourceKey];
+    const sourceValue = source[sourceKey];
 
     if (!HAS_OWN.call(target, sourceKey)) {
       if (result === null) {
-        result = Object.create(proto) as Object;
+        result = Object.create(proto);
+
+        if (!result) {
+          continue;
+        }
+
         targetKeys ??= Object.keys(target);
 
         for (let j = 0, m = targetKeys.length; j < m; j++) {
@@ -229,7 +234,7 @@ function mergePlainObject(
         ref.set(source, result); // [Ref.set]
       }
 
-      (result as Object)[sourceKey] = clone(sourceValue, options, ref);
+      result[sourceKey] = clone(sourceValue, options, ref);
       continue;
     }
 
@@ -237,7 +242,12 @@ function mergePlainObject(
 
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
-        result = Object.create(proto) as Object;
+        result = Object.create(proto);
+
+        if (!result) {
+          continue;
+        }
+
         targetKeys ??= Object.keys(target);
 
         for (let j = 0, m = targetKeys.length; j < m; j++) {
@@ -248,7 +258,7 @@ function mergePlainObject(
         ref.set(source, result); // [Ref.set]
       }
 
-      (result as Object)[sourceKey] = mergedValue;
+      result[sourceKey] = mergedValue;
     }
   }
 
@@ -260,7 +270,7 @@ function mergePlainObjectFast(
   source: Object,
   options: GattaiMergeOptions,
   ref: Ref,
-): Object {
+) {
   ref.set(source, target); // [Ref.set]
   let result: Object | null = null;
 
@@ -358,7 +368,7 @@ function mergeArray(
   source: readonly unknown[],
   options: GattaiMergeOptions,
   ref: Ref,
-): unknown[] {
+) {
   const arrays = options.arrays ?? 'replace';
   const nullish = options.nullish ?? 'loose';
 
@@ -383,9 +393,9 @@ function mergeMap<K, V>(
   source: ReadonlyMap<K, V>,
   options: GattaiMergeOptions,
   ref: Ref,
-): Map<K, V> {
+) {
   ref.set(source, target); // [Ref.set]
-  let result: Map<K, V> | null = null;
+  let result = null;
 
   for (const [key, sourceValue] of source) {
     if (!target.has(key)) {
@@ -394,12 +404,12 @@ function mergeMap<K, V>(
         ref.set(source, result); // [Ref.set]
       }
 
-      result.set(key, clone(sourceValue, options, ref) as V);
+      result.set(key, clone(sourceValue, options, ref));
       continue;
     }
 
-    const targetValue = target.get(key) as V;
-    const mergedValue = merge(targetValue, sourceValue, options, ref) as V;
+    const targetValue = target.get(key);
+    const mergedValue = merge(targetValue, sourceValue, options, ref);
 
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
@@ -407,11 +417,11 @@ function mergeMap<K, V>(
         ref.set(source, result); // [Ref.set]
       }
 
-      result.set(key, mergedValue);
+      result.set(key, mergedValue as V);
     }
   }
 
-  return result ?? (target as Map<K, V>);
+  return result ?? target;
 }
 
 function mergeWithDescriptors(
@@ -419,7 +429,7 @@ function mergeWithDescriptors(
   source: Object,
   options: GattaiMergeOptions,
   ref: Ref,
-): Object {
+) {
   const placeholder = Object.create(Object.getPrototypeOf(target));
   ref.set(source, placeholder); // [Ref.set]
   const targetDescs = Object.getOwnPropertyDescriptors(target);
@@ -428,16 +438,18 @@ function mergeWithDescriptors(
   let result: Object | null = null;
 
   for (let i = 0, l = keys.length; i < l; i++) {
-    const key = keys[i] as PropertyKey;
+    const key = keys[i];
 
-    if (isUnsafeKey(key)) {
+    if (!key || isUnsafeKey(key)) {
       continue;
     }
 
-    const targetDesc = targetDescs[key as PropertyKey] as
-      | PropertyDescriptor
-      | undefined;
-    const sourceDesc = sourceDescs[key as PropertyKey] as PropertyDescriptor;
+    const targetDesc = targetDescs[key];
+    const sourceDesc = sourceDescs[key];
+
+    if (!sourceDesc) {
+      continue;
+    }
 
     if ('value' in sourceDesc) {
       const mergedValue =
@@ -504,13 +516,13 @@ function mergeWithDescriptors(
 // [Clone] (bunshin-clone)
 // -----------------------------------------------------------------------------
 
-function clone(node: unknown, options: GattaiMergeOptions, ref: Ref): unknown {
+function clone(node: unknown, options: GattaiMergeOptions, ref: Ref) {
   if (!isObject(node)) {
     return node;
   }
 
   // [Ref]
-  const cached = ref.get(node as object);
+  const cached = ref.get(node);
 
   if (cached !== undefined) {
     return cached;
@@ -535,10 +547,10 @@ function clone(node: unknown, options: GattaiMergeOptions, ref: Ref): unknown {
 
   // Plain object
   if (isPlainObject(node)) {
-    const result = Object.create(Object.getPrototypeOf(node)) as Object;
-    ref.set(node as object, result); // [Ref.set]
+    const result = Object.create(Object.getPrototypeOf(node));
+    ref.set(node, result); // [Ref.set]
 
-    for (const key in node as object) {
+    for (const key in node) {
       if (!HAS_OWN.call(node, key) || isUnsafeKey(key)) {
         continue;
       }
@@ -619,9 +631,7 @@ function clone(node: unknown, options: GattaiMergeOptions, ref: Ref): unknown {
     node instanceof Error ||
     (typeof DOMException !== 'undefined' && node instanceof DOMException)
   ) {
-    const result = cloneError(node, options, ref);
-    ref.set(node, result); // [Ref.set]
-    return result;
+    return cloneError(node, options, ref);
   }
 
   // Blob
@@ -665,20 +675,29 @@ function clone(node: unknown, options: GattaiMergeOptions, ref: Ref): unknown {
   }
 
   // Fallback: unsupported types
-  ref.set(node as object, node); // [Ref.set]
+  ref.set(node, node); // [Ref.set]
   return node;
 }
 
 function cloneError(
-  value: Error,
+  value: Error | DOMException,
   options: GattaiMergeOptions,
   ref: Ref,
-): Error {
+): Error | DOMException {
+  if (value instanceof DOMException) {
+    const result = new DOMException(value.message, value.name);
+    ref.set(value, result); // [Ref.set]
+    return result;
+  }
+
   const name = value.name || 'Error';
   const message = value.message || '';
   let result: Error;
 
   switch (name) {
+    case 'EvalError':
+      result = new EvalError(message);
+      break;
     case 'RangeError':
       result = new RangeError(message);
       break;
@@ -691,29 +710,22 @@ function cloneError(
     case 'TypeError':
       result = new TypeError(message);
       break;
+    case 'URIError':
+      result = new URIError(message);
+      break;
     default:
       result = new Error(message);
       result.name = name;
   }
 
-  if (!options.preserveDescriptors && 'cause' in value) {
-    const cause = value.cause;
+  ref.set(value, result); // [Ref.set]
 
-    if (cause !== undefined) {
-      result.cause = clone(cause, options, ref);
-    }
+  if ('cause' in value && value.cause !== undefined) {
+    result.cause = clone(value.cause, options, ref);
   }
 
   if (value.stack) {
     result.stack = value.stack;
-  }
-
-  for (const key of Object.keys(value) as (keyof typeof value)[]) {
-    if (key === 'name' || key === 'message' || key === 'stack') {
-      continue;
-    }
-
-    result[key] = value[key];
   }
 
   return result;
@@ -723,20 +735,24 @@ function cloneWithDescriptors(
   node: Object,
   options: GattaiMergeOptions,
   ref: Ref,
-): Object {
-  const result = Object.create(Object.getPrototypeOf(node)) as Object;
+) {
+  const result = Object.create(Object.getPrototypeOf(node));
   ref.set(node, result); // [Ref.set]
   const descs = Object.getOwnPropertyDescriptors(node);
-  const keys = Reflect.ownKeys(descs);
+  const keys: PropertyKey[] = Reflect.ownKeys(descs);
 
   for (let i = 0, l = keys.length; i < l; i++) {
-    const key = keys[i] as PropertyKey;
+    const key = keys[i];
+
+    if (!key) {
+      continue;
+    }
 
     if (isUnsafeKey(key)) {
       continue;
     }
 
-    const desc: PropertyDescriptor = { ...descs[key] };
+    const desc = { ...descs[key] };
 
     if ('value' in desc) {
       desc.value = clone(desc.value, options, ref);
@@ -758,7 +774,7 @@ function cloneWithDescriptors(
 // [Utils]
 // -----------------------------------------------------------------------------
 
-function isGattaiMergeOptions(value: unknown): boolean {
+function isGattaiMergeOptions(value: unknown) {
   if (!isPlainObject(value)) {
     return false;
   }
@@ -778,24 +794,24 @@ function isGattaiMergeOptions(value: unknown): boolean {
   );
 }
 
-function isObject(value: unknown): boolean {
+function isObject(value: unknown) {
   return typeof value === 'object' && value !== null;
 }
 
-function isObjectPrototype(value: unknown): boolean {
+function isObjectPrototype(value: unknown) {
   return Object.getPrototypeOf(value) === Object.prototype;
 }
 
-function isPlainObject(value: unknown): boolean {
+function isPlainObject(value: unknown) {
   return OBJECT_TO_STRING.call(value) === '[object Object]';
 }
 
-function isSame(a: unknown, b: unknown): boolean {
+function isSame(a: unknown, b: unknown) {
   // biome-ignore lint/suspicious/noSelfCompare: performance optimization
   return a === b || (a !== a && b !== b);
 }
 
-function isShallowArray(array: readonly unknown[]): boolean {
+function isShallowArray(array: readonly unknown[]) {
   for (let i = 0, l = array.length; i < l; i++) {
     if (isObject(array[i])) {
       return false;
@@ -805,7 +821,7 @@ function isShallowArray(array: readonly unknown[]): boolean {
   return true;
 }
 
-function isUnsafeKey(key: PropertyKey): boolean {
+function isUnsafeKey(key: PropertyKey) {
   return (
     typeof key === 'string' &&
     (key === '__proto__' || key === 'prototype' || key === 'constructor')
