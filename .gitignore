@@ -3,5 +3,4 @@ dist
 .DS_Store
 *.log
 internal-tests
-_RELEASE.txt
 bench.ts
