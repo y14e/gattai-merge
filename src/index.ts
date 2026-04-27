@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.2.2
+ * @version 3.2.3
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -43,18 +43,18 @@ type DeepMergedObject<
     : MergedObject<T, F>
   : T;
 
-type ArrayMergeFunction = (
-  target: readonly unknown[],
-  source: readonly unknown[],
-  context: ArrayContext,
-) => unknown[];
-
-type ArrayContext = {
+type MergeContext = {
   options: GattaiMergeOptions;
   ref: Ref;
   merge: (target: unknown, source: unknown) => unknown;
   clone: (node: unknown) => unknown;
 };
+
+type ArrayMergeFunction = (
+  target: readonly unknown[],
+  source: readonly unknown[],
+  context: MergeContext,
+) => unknown[];
 
 // -----------------------------------------------------------------------------
 // [Constants]
@@ -74,19 +74,18 @@ export default function gattaiMerge<
 export default function gattaiMerge<
   T extends object,
   S extends readonly unknown[],
->(target: T, ...args: [...S, GattaiMergeOptions]): DeepMergedObject<T, S>;
-export default function gattaiMerge(target: unknown, ...args: unknown[]) {
+>(target: T, ...args: [...S, GattaiMergeOptions]): DeepMergedObject<T, S> {
   const length = args.length;
   const last = length > 0 ? args[length - 1] : undefined;
   const hasOptions = isGattaiMergeOptions(last);
   const options = (hasOptions ? last : EMPTY_OPTIONS) as GattaiMergeOptions;
-  let result: unknown = target;
+  let result = target;
 
   for (let i = 0, l = hasOptions ? length - 1 : length; i < l; i++) {
     result = merge(result, args[i], options, new WeakMap());
   }
 
-  return result;
+  return result as DeepMergedObject<T, S>;
 }
 
 // -----------------------------------------------------------------------------
