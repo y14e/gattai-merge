@@ -203,7 +203,7 @@ function mergePlainObject(
     result = Object.create(proto) as Object;
     targetKeys ??= Object.keys(target);
 
-    for (let i = 0, j = targetKeys.length; i < j; i++) {
+    for (let i = 0, l = targetKeys.length; i < l; i++) {
       const key = targetKeys[i] as string;
       result[key] = target[key];
     }
