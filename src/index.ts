@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.2.1
+ * @version 3.2.2
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -199,6 +199,18 @@ function mergePlainObject(
   let result: Object | null = null;
   const proto = Object.getPrototypeOf(target);
 
+  const ensure = () => {
+    result = Object.create(proto) as Object;
+    targetKeys ??= Object.keys(target);
+
+    for (let i = 0, j = targetKeys.length; i < j; i++) {
+      const key = targetKeys[i] as string;
+      result[key] = target[key];
+    }
+
+    ref.set(source, result);
+  };
+
   forEachOwnKey(source, (sourceKey) => {
     if (isUnsafeKey(sourceKey)) {
       return;
@@ -212,33 +224,17 @@ function mergePlainObject(
 
       if (!isSame(mergedValue, targetValue)) {
         if (result === null) {
-          result = Object.create(proto) as Object;
-          targetKeys ??= Object.keys(target);
-
-          for (let j = 0, m = targetKeys.length; j < m; j++) {
-            const k = targetKeys[j] as string;
-            result[k] = target[k];
-          }
-
-          ref.set(source, result);
+          ensure();
         }
 
-        result[sourceKey] = mergedValue;
+        (result as Object)[sourceKey] = mergedValue;
       }
     } else {
       if (result === null) {
-        result = Object.create(proto) as Object;
-        targetKeys ??= Object.keys(target);
-
-        for (let j = 0, m = targetKeys.length; j < m; j++) {
-          const k = targetKeys[j] as string;
-          result[k] = target[k];
-        }
-
-        ref.set(source, result);
+        ensure();
       }
 
-      result[sourceKey] = clone(sourceValue, options, ref);
+      (result as Object)[sourceKey] = clone(sourceValue, options, ref);
     }
   });
 
