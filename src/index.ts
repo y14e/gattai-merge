@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.2.3
+ * @version 3.2.4
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) 2026 Yusuke Kamiyamane
@@ -111,7 +111,7 @@ function merge(
     }
 
     if (nullish === 'throw') {
-      throw new TypeError('Source object nullish.');
+      throw new TypeError('Source object nullish');
     }
 
     return target;
@@ -121,14 +121,14 @@ function merge(
     return clone(source, options, ref);
   }
 
-  const sourceIsObject = isObject(source);
+  const isObjectSource = isObject(source);
 
-  if (!isObject(target) || !sourceIsObject) {
-    return sourceIsObject ? clone(source, options, ref) : source;
+  if (!isObject(target) || !isObjectSource) {
+    return isObjectSource ? clone(source, options, ref) : source;
   }
 
   if (Object.isFrozen(target)) {
-    throw new TypeError('Target object frozen.');
+    throw new TypeError('Target object frozen');
   }
 
   // [Ref]
@@ -305,7 +305,7 @@ const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
   'replace' | 'concat' | 'merge',
   ArrayMergeFunction
 > = {
-  replace: (_target, source) => source.slice(),
+  replace: (_, source) => source.slice(),
 
   concat: (target, source, { clone }) => {
     const result = new Array(target.length + source.length);
