@@ -32,30 +32,23 @@ import gattaiMerge from 'https://unpkg.com/gattai-merge/dist/index.js';
 ## Usage
 
 ```ts
-const a = { foo: 1, nested: { x: 1 } };
-const b = { bar: 2, nested: { x: 1 } };
-
-const result = gattaiMerge(a, b);
-
-console.log(result);
-// { foo: 1, bar: 2, nested: { x: 1 } }
-```
-
-## API
-
-```ts
-gattaiMerge(target, ...sources)
 gattaiMerge(target, ...sources, options)
+// => DeepMergedObject<T, S>
+// 
+// target: T
+// ...sources: [...S, options?]
+//   - S: sources (tuple)
+//   - options (optional, last): GattaiMergeOptions
 ```
 
-## Options
+### 🪄 Options
 
 ```ts
-{
-  arrays: 'replace';
-  nullish: 'loose';
-  preserveDescriptors: false;
-  strictDescriptors: false;
+interface GattaiMergeOptions {
+  arrays?: 'replace' | 'concat' | 'merge' | ArrayMergeFunction; // (default: 'replace')
+  nullish?: 'loose' | 'strict' | 'throw';                       // (default: 'loose')
+  preserveDescriptors?: boolean;                                // (default: false)
+  strictDescriptors?: boolean;                                  // (default: false)
 }
 ```
 
@@ -82,9 +75,7 @@ gattaiMerge(target, ...sources, options)
 * `false`: skip incompatible descriptors
 * `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
 
----
-
-**🪄 ArrayMergeFunction**
+**ArrayMergeFunction**
  
 ```ts
 (target, source, {
