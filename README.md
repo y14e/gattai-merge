@@ -22,7 +22,11 @@ npm i gattai-merge
 import gattaiMerge from 'gattai-merge';
 
 // CDN
+import gattaiMerge from 'https://esm.sh/gattai-merge'
+// or
 import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge/+esm';
+// or
+import gattaiMerge from 'https://unpkg.com/gattai-merge/dist/index.js';
 ```
 
 ## Usage
