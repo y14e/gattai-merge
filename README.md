@@ -21,7 +21,7 @@ npm i gattai-merge
 // npm
 import gattaiMerge from 'gattai-merge';
 
-// CDN
+// CDNs
 import gattaiMerge from 'https://esm.sh/gattai-merge'
 // or
 import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge/+esm';
