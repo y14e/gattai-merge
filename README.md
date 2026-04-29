@@ -32,8 +32,6 @@ import gattaiMerge from 'https://unpkg.com/gattai-merge/dist/index.js';
 ## Usage
 
 ```ts
-import gattaiMerge from 'gattai-merge';
-
 const a = { foo: 1, nested: { x: 1 } };
 const b = { bar: 2, nested: { x: 1 } };
 
