@@ -36,9 +36,8 @@ gattaiMerge(target, ...sources, options)
 // => DeepMergedObject<T, S>
 // 
 // target: T
-// ...sources: [...S, options?]
-//   - S: sources (tuple)
-//   - options (optional, last): GattaiMergeOptions
+// ...sources: ...S
+// options (optional): GattaiMergeOptions
 ```
 
 ### 🪄 Options
