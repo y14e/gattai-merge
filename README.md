@@ -21,15 +21,17 @@ npm i gattai-merge
 // npm
 import gattaiMerge from 'gattai-merge';
 
-// CDN
+// CDNs
+import gattaiMerge from 'https://esm.sh/gattai-merge'
+// or
 import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge/+esm';
+// or
+import gattaiMerge from 'https://unpkg.com/gattai-merge/dist/index.js';
 ```
 
 ## Usage
 
 ```ts
-import gattaiMerge from 'gattai-merge';
-
 const a = { foo: 1, nested: { x: 1 } };
 const b = { bar: 2, nested: { x: 1 } };
 
