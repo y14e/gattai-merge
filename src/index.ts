@@ -3,10 +3,10 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.3.0
+ * @version 3.3.1
  * @author Yusuke Kamiyamane
  * @license MIT
- * @copyright Copyright (c) 2026 Yusuke Kamiyamane
+ * @copyright Copyright (c) Yusuke Kamiyamane
  * @see {@link https://github.com/y14e/gattai-merge}
  */
 
@@ -76,7 +76,7 @@ export default function gattaiMerge<
   S extends readonly unknown[],
 >(target: T, ...args: [...S, GattaiMergeOptions]): DeepMergedObject<T, S> {
   const length = args.length;
-  const last = length > 0 ? args[length - 1] : undefined;
+  const last = length ? args[length - 1] : undefined;
   const hasOptions = isGattaiMergeOptions(last);
   const options = (hasOptions ? last : EMPTY_OPTIONS) as GattaiMergeOptions;
   let result = target;
