@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.3.1
+ * @version 3.3.2
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -227,17 +227,11 @@ function mergePlainObject(
       const mergedValue = merge(targetValue, sourceValue, options, refs);
 
       if (!isSame(mergedValue, targetValue)) {
-        if (result === null) {
-          ensure();
-        }
-
+        result === null && ensure();
         (result as Object)[sourceKey] = mergedValue;
       }
     } else {
-      if (result === null) {
-        ensure();
-      }
-
+      result === null && ensure();
       (result as Object)[sourceKey] = clone(sourceValue, options, refs);
     }
   });
