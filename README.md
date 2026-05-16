@@ -58,7 +58,7 @@ interface GattaiMergeOptions {
 * `'merge'`: deep merge by index
 * `ArrayMergeFunction`: custom array merge function (advanced usage)
 
-### ⚙️ ArrayMergeFunction
+#### ⚙️ ArrayMergeFunction
  
 ```ts
 (target, source, {
@@ -202,10 +202,10 @@ If you require strict immutability guarantees, consider wrapping or extending th
 ## 🚀 Benchmark
 
 ```bash
-# Install benchmark dependencies
+# Install
 npm i tsx tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
 
-# Run benchmark
+# Run
 npx tsx run.ts
 
 # Cleanup
