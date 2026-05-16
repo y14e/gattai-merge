@@ -198,8 +198,10 @@ This behavior is intentional and aligns with libraries like Immer, prioritizing 
 If you require strict immutability guarantees, consider wrapping or extending the API to always return a new object.
 </details>
 
-## Performance
+## Benchmark
 
-* Avoids unnecessary cloning
-* Only clones changed branches
-* Comparable or faster than typical deep merge libraries in real-world scenarios
+```bash
+npm i tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+npx tsx run.ts
+npm un tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+```
