@@ -40,7 +40,7 @@ gattaiMerge(target, ...sources, options)
 // options (optional): GattaiMergeOptions
 ```
 
-### 🪄 Options
+## 🪄 Options
 
 ```ts
 interface GattaiMergeOptions {
@@ -51,39 +51,41 @@ interface GattaiMergeOptions {
 }
 ```
 
-**arrays**
+### `arrays`
 
 * `'replace'`: replace target array (shallow copy)
 * `'concat'`: concatenate arrays
 * `'merge'`: deep merge by index
 * `ArrayMergeFunction`: custom array merge function (advanced usage)
 
-**nullish**
+### ⚙️ ArrayMergeFunction
+ 
+```ts
+(target, source, {
+  merge: (target, source) => {},
+  clone: (node) => {},
+}) => {};
+```
+
+### `nullish`
 
 * `'loose'`: keep target value if source is nullish
 * `'strict'`: overwrite target value if source is nullish
 * `'throw'`: throw TypeError if source is nullish
 
-**preserveDescriptors**
+### `preserveDescriptors`
 
-* `false`: use standard merge (faster, ignores property descriptors)
-* `true`: preserve property descriptors (getters/setters, etc.)
+If `true`, preserves property descriptors (getters/setters, etc.).
 
-**strictDescriptors**
+### `strictDescriptors`
 
-* `false`: skip incompatible descriptors
-* `true`: throw if descriptor cannot be merged (e.g. non-configurable or non-writable)
+If `true`, throws when descriptor cannot be merged (e.g. non-configurable or non-writable).
 
-**ArrayMergeFunction**
- 
-```ts
-(target, source, {
-  merge: (target, source) => {};
-  clone: (node) => {};
-}) => {};
-```
 
-## Examples
+## 💡 Examples
+
+<details>
+<summary>Read more</summary>
 
 ### Array
 
@@ -137,12 +139,11 @@ gattaiMerge(
 );
 // => Map { 'a' => 1, 'b' => 2 }
 ```
+</details>
 
-## Caution
+## ⚠️ Caution
 
-Gattai Merge is optimized for performance using structural sharing (copy-on-write).
-
-Objects are only cloned when a change is actually required.
+Gattai Merge is optimized for performance using structural sharing (copy-on-write). Objects are only cloned when a change is actually required.
 
 <details>
 <summary>Read more</summary>
@@ -198,10 +199,15 @@ This behavior is intentional and aligns with libraries like Immer, prioritizing 
 If you require strict immutability guarantees, consider wrapping or extending the API to always return a new object.
 </details>
 
-## Benchmark
+## 🚀 Benchmark
 
 ```bash
-npm i tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+# Install benchmark dependencies
+npm i tsx tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+
+# Run benchmark
 npx tsx run.ts
-npm un tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+
+# Cleanup
+npm un tsx tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
 ```
