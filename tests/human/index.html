@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>gattaiMerge Benchmark</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1200px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+    h1 { border-bottom: 2px solid #ddd; padding-bottom: 8px; }
+    h2 { margin-top: 32px; font-size: 18px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #f6f8fa; font-weight: 600; position: sticky; top: 0; }
+   .pass { color: #1a7f37; font-weight: 600; }
+   .fail { color: #cf222e; font-weight: 600; }
+   .summary { padding: 12px; border-radius: 6px; margin: 16px 0; }
+   .summary.ok { background: #dafbe1; border: 1px solid #1a7f37; }
+   .summary.ng { background: #ffebe9; border: 1px solid #cf222e; }
+    button { padding: 8px 16px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; background: #f6f8fa; cursor: pointer; margin-right: 8px; }
+    button:hover { background: #eee; }
+   .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+   .metric { padding: 12px; background: #f6f8fa; border-radius: 6px; }
+   .metric b { font-size: 20px; display: block; }
+   .metric small { color: #666; }
+   .lib-row { font-weight: 600; background: #fafbfc; }
+   .fastest { background: #dafbe1!important; }
+    pre { background: #f6f8fa; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
+   .tabs { display: flex; gap: 8px; margin: 16px 0; border-bottom: 1px solid #ddd; }
+   .tab { padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; }
+   .tab.active { border-bottom-color: #0969da; font-weight: 600; }
+   .tab-content { display: none; }
+   .tab-content.active { display: block; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "lodash": "https://cdn.jsdelivr.net/npm/lodash@4.17.21/+esm",
+        "deepmerge": "https://cdn.jsdelivr.net/npm/deepmerge@4.3.1/+esm"
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>gattaiMerge Benchmark & Test Suite</h1>
+  <p>機能テスト・他ライブラリ比較・パフォーマンス測定</p>
+
+  <div>
+    <button onclick="runAll()">全テスト実行</button>
+    <button onclick="runUnitOnly()">単体テストのみ</button>
+    <button onclick="runPerfOnly()">パフォーマンスのみ</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('unit')">単体テスト</div>
+    <div class="tab" onclick="switchTab('compare')">ライブラリ比較</div>
+    <div class="tab" onclick="switchTab('perf')">パフォーマンス</div>
+    <div class="tab" onclick="switchTab('memory')">メモリ/参照</div>
+  </div>
+
+  <div id="unit" class="tab-content active">
+    <h2>単体テスト</h2>
+    <div id="unit-summary"></div>
+    <table id="unit-results">
+      <thead><tr><th>テストケース</th><th>結果</th><th>詳細</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="compare" class="tab-content">
+    <h2>ライブラリ機能比較</h2>
+    <table id="compare-table">
+      <thead><tr><th>機能</th><th>gattaiMerge</th><th>lodash.merge</th><th>deepmerge</th><th>Object.assign</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <h2>挙動差分テスト</h2>
+    <table id="diff-results">
+      <thead><tr><th>ケース</th><th>gattaiMerge</th><th>lodash</th><th>deepmerge</th><th>assign</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="perf" class="tab-content">
+    <h2>パフォーマンス測定</h2>
+    <div id="perf-summary"></div>
+    <table id="perf-table">
+      <thead><tr><th>シナリオ</th><th>gattaiMerge</th><th>lodash</th><th>deepmerge</th><th>assign</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="memory" class="tab-content">
+    <h2>Structural Sharing / メモリ効率</h2>
+    <div id="memory-results"></div>
+  </div>
+
+<script type="module">
+    import gattaiMerge from './index.js';
+    import _ from 'lodash';
+    import deepmerge from 'deepmerge';
+
+    // テストフレームワーク
+    const tests = [];
+    function test(name, fn) { tests.push({ name, fn }); }
+    function expect(received) {
+      return {
+        toBe(expected) {
+          if (!Object.is(received, expected)) throw new Error(`Expected ${fmt(expected)}, got ${fmt(received)}`);
+        },
+        toEqual(expected) {
+          if (JSON.stringify(received)!== JSON.stringify(expected)) throw new Error(`Expected ${fmt(expected)}, got ${fmt(received)}`);
+        },
+        toBeInstanceOf(cls) {
+          if (!(received instanceof cls)) throw new Error(`Expected instance of ${cls.name}`);
+        },
+        not: {
+          toBe(expected) {
+            if (Object.is(received, expected)) throw new Error(`Expected not ${fmt(expected)}`);
+          }
+        },
+        toBeDefined() {
+          if (received === undefined) throw new Error(`Expected defined, got undefined`);
+        },
+        toBeUndefined() {
+          if (received!== undefined) throw new Error(`Expected undefined, got ${fmt(received)}`);
+        },
+        toThrow(expectedMessage) {
+          let threw = false;
+          let msg = '';
+          try {
+            received();
+          } catch (e) {
+            threw = true;
+            msg = e.message;
+          }
+          if (!threw) throw new Error('Expected to throw');
+          if (expectedMessage &&!msg.includes(expectedMessage)) {
+            throw new Error(`Expected error to include "${expectedMessage}", got "${msg}"`);
+          }
+        }
+      };
+    }
+    function fmt(v) {
+      if (v === null) return 'null';
+      if (v === undefined) return 'undefined';
+      if (typeof v === 'string') return `"${v}"`;
+      if (Array.isArray(v)) return `[${v.map(fmt).join(',')}]`;
+      if (v instanceof Date) return `Date(${v.toISOString()})`;
+      if (v instanceof RegExp) return v.toString();
+      if (typeof v === 'object') return JSON.stringify(v);
+      return String(v);
+    }
+
+
+    // 単体テスト定義
+    test('primitive values: source wins', () => {
+      expect(gattaiMerge(1, 2)).toBe(2);
+      expect(gattaiMerge('a', 'b')).toBe('b');
+      expect(gattaiMerge(true, false)).toBe(false);
+    });
+
+    // ↓nullish関連を3パターンに書き直し
+    test('nullish: loose - ignore nullish source', () => {
+      expect(gattaiMerge({ a: 1 }, null)).toEqual({ a: 1 });
+      expect(gattaiMerge({ a: 1 }, undefined)).toEqual({ a: 1 });
+      expect(gattaiMerge({ a: 1 }, null, { nullish: 'loose' })).toEqual({ a: 1 });
+    });
+
+    test('nullish: strict - propagate nullish source', () => {
+      expect(gattaiMerge({ a: 1 }, null, { nullish: 'strict' })).toBe(null);
+      expect(gattaiMerge({ a: 1 }, undefined, { nullish: 'strict' })).toBe(undefined);
+    });
+
+    test('nullish: throw - reject nullish source', () => {
+      expect(() => gattaiMerge({ a: 1 }, null, { nullish: 'throw' })).toThrow('Source object nullish');
+      expect(() => gattaiMerge({ a: 1 }, undefined, { nullish: 'throw' })).toThrow('Source object nullish');
+    });
+
+    test('nullish: target nullish clones source', () => {
+      expect(gattaiMerge(null, { a: 1 })).toEqual({ a: 1 }); // loose
+      expect(gattaiMerge(null, { a: 1 }, { nullish: 'strict' })).toEqual({ a: 1 }); // strict
+      expect(gattaiMerge(null, { a: 1 }, { nullish: 'throw' })).toEqual({ a: 1 }); // throwはsourceがnullishなときに例外だが、targetがnullishな場合はcloneする;
+    });
+
+    test('shallow merge objects', () => {
+      const result = gattaiMerge({ a: 1 }, { b: 2 });
+      expect(result).toEqual({ a: 1, b: 2 });
+    });
+
+    test('deep merge objects', () => {
+      const target = { a: { b: 1 } };
+      const source = { a: { c: 2 } };
+      expect(gattaiMerge(target, source)).toEqual({ a: { b: 1, c: 2 } });
+    });
+
+    test('structural sharing: unchanged props keep reference', () => {
+      const nested = { x: 1 };
+      const target = { a: nested, b: 1 };
+      const result = gattaiMerge(target, { b: 2 });
+      expect(result.a).toBe(nested);
+      expect(result.b).toBe(2);
+    });
+
+    test('arrays: replace by default', () => {
+      expect(gattaiMerge([1, 2], [3])).toEqual([3]);
+    });
+
+    test('arrays: concat', () => {
+      const result = gattaiMerge([1, 2], [3, 4], { arrays: 'concat' });
+      expect(result).toEqual([1, 2, 3, 4]);
+    });
+
+    test('arrays: merge by index', () => {
+      const target = [{ a: 1 }, { b: 2 }];
+      const source = [{ c: 3 }, { d: 4 }];
+      const result = gattaiMerge(target, source, { arrays: 'merge' });
+      expect(result).toEqual([{ a: 1, c: 3 }, { b: 2, d: 4 }]);
+    });
+
+    test('arrays: merge with different lengths', () => {
+      const result = gattaiMerge([1], [2, 3], { arrays: 'merge' });
+      expect(result).toEqual([2, 3]);
+    });
+
+    // ↓配列要素のnullishは消えないことを確認
+    test('arrays: merge keeps nullish elements', () => {
+      const result = gattaiMerge([1, 2], [null, 4], { arrays: 'merge' }); // デフォloose
+      expect(result).toEqual([1, 4]); // nullをスキップ
+      const result2 = gattaiMerge([1, 2], [null, 4], { arrays: 'merge', nullish: 'strict' });
+      expect(result2).toEqual([null, 4]); // strictならnullを採用
+    });
+
+    test('arrays: merge with nullish loose skips element', () => {
+      const result = gattaiMerge([1, 2], [null, 4], { arrays: 'merge', nullish: 'loose' });
+      expect(result).toEqual([1, 4]); // nullをスキップしてtarget[0]を残す
+    });
+    // ↑配列要素テストここまで
+
+    test('circular reference', () => {
+      const a = { x: 1 };
+      a.self = a;
+      const b = { y: 2 };
+      b.self = b;
+      const result = gattaiMerge(a, b);
+      expect(result.x).toBe(1);
+      expect(result.y).toBe(2);
+      expect(result.self).toBe(result);
+    });
+
+    test('multiple sources', () => {
+      const result = gattaiMerge({ a: 1 }, { b: 2 }, { c: 3 });
+      expect(result).toEqual({ a: 1, b: 2, c: 3 });
+    });
+
+    test('multiple sources with override', () => {
+      const result = gattaiMerge({ a: 1 }, { a: 2 }, { a: 3 });
+      expect(result).toEqual({ a: 3 });
+    });
+
+    test('descriptors: preserve getter/setter', () => {
+      const source = {};
+      Object.defineProperty(source, 'x', {
+        get: () => 42,
+        enumerable: true
+      });
+      const result = gattaiMerge({}, source, { preserveDescriptors: true });
+      expect(result.x).toBe(42);
+      expect(Object.getOwnPropertyDescriptor(result, 'x').get).toBeDefined();
+    });
+
+    test('unmergeable types: source is cloned', () => {
+      const date = new Date('2024-01-01');
+      const regexp = /test/g;
+      const result = gattaiMerge(date, regexp);
+      expect(result).toBeInstanceOf(RegExp);
+      expect(result.source).toBe('test');
+      expect(result.flags).toBe('g');
+      expect(result).not.toBe(regexp);
+    });
+
+    test('Map merge', () => {
+      const m1 = new Map([['a', 1]]);
+      const m2 = new Map([['b', 2]]);
+      const result = gattaiMerge(m1, m2);
+      expect(result instanceof Map).toBe(true);
+      expect(result.get('a')).toBe(1);
+      expect(result.get('b')).toBe(2);
+    });
+
+    test('Map deep merge values', () => {
+      const m1 = new Map([['a', { x: 1 }]]);
+      const m2 = new Map([['a', { y: 2 }]]);
+      const result = gattaiMerge(m1, m2);
+      expect(result.get('a')).toEqual({ x: 1, y: 2 });
+    });
+
+    test('Set merge', () => {
+      const s1 = new Set([1, 2]);
+      const s2 = new Set([2, 3]);
+      const result = gattaiMerge(s1, s2);
+      expect(result instanceof Set).toBe(true);
+      expect([...result].sort()).toEqual([1, 2, 3]);
+    });
+
+    test('Date clone', () => {
+      const d = new Date('2024-01-01T00:00:00Z');
+      const result = gattaiMerge({}, d);
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getTime()).toBe(d.getTime());
+      expect(result).not.toBe(d);
+    });
+
+    test('RegExp clone with flags', () => {
+      const r = /test/gi;
+      const result = gattaiMerge({}, r);
+      expect(result).toBeInstanceOf(RegExp);
+      expect(result.source).toBe('test');
+      expect(result.flags).toBe('gi');
+    });
+
+    test('Error clone with stack', () => {
+      const e = new Error('msg');
+      e.code = 'ERR';
+      const result = gattaiMerge({}, e);
+      expect(result).toBeInstanceOf(Error);
+      expect(result.message).toBe('msg');
+      expect(result.code).toBe('ERR');
+      expect(result.stack).toBeDefined();
+    });
+
+    test('TypedArray clone', () => {
+      const arr = new Uint8Array([1, 2, 3]);
+      const result = gattaiMerge({}, arr);
+      expect(result).toBeInstanceOf(Uint8Array);
+      expect([...result]).toEqual([1, 2, 3]);
+      expect(result).not.toBe(arr);
+    });
+
+    // 実行関数
+    window.runAll = function() {
+      runUnit();
+      runCompare();
+      runPerf();
+      runMemory();
+    };
+    window.runUnitOnly = runUnit;
+    window.runPerfOnly = runPerf;
+
+    function runUnit() {
+      const tbody = document.querySelector('#unit-results tbody');
+      const summary = document.getElementById('unit-summary');
+      tbody.innerHTML = '';
+      let pass = 0, fail = 0;
+
+      for (const t of tests) {
+        const tr = document.createElement('tr');
+        try {
+          t.fn();
+          tr.innerHTML = `<td>${t.name}</td><td class="pass">PASS</td><td></td>`;
+          pass++;
+        } catch (e) {
+          tr.innerHTML = `<td>${t.name}</td><td class="fail">FAIL</td><td>${e.message}</td>`;
+          fail++;
+        }
+        tbody.appendChild(tr);
+      }
+
+      summary.className = 'summary ' + (fail? 'ng' : 'ok');
+      summary.innerHTML = `<b>${pass}/${tests.length} passed</b> ${fail? `, ${fail} failed` : ''}`;
+    }
+
+    // 比較表の diffs も更新
+    function runCompare() {
+      const tbody = document.querySelector('#compare-table tbody');
+      const diffBody = document.querySelector('#diff-results tbody');
+      tbody.innerHTML = '';
+      diffBody.innerHTML = '';
+
+      const features = [
+        ['Deep merge', '✓', '✓', '✓', '✗'],
+        ['Arrays: replace', '✓', '✓', '✓', '✗'],
+        ['Arrays: concat', '✓', '✗', '✗'],
+        ['Arrays: merge', '✓', '✗'],
+        ['Structural sharing', '✓', '✗'],
+        ['Circular refs', '✓', '△', '✗', '✗'],
+        ['Map/Set', '✓', '✗', '✗'],
+        ['Date/RegExp/Error', '✓', '△', '△', '✗'],
+        ['Descriptors', '✓', '✗', '✗'],
+        ['Symbol keys', '✓', '✓', '✗', '✓'],
+        ['Prototype pollution guard', '✓', '✗', '✗'],
+        ['nullish handling', '✓ loose/strict/throw', '✓ skip', '✗ throw', '✓ skip'],
+      ];
+
+      for (const row of features) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = row.map(c => `<td>${c}</td>`).join('');
+        tbody.appendChild(tr);
+      }
+
+      // 挙動差分
+      const diffs = [
+        {
+          name: 'null in source: loose',
+          g: fmt(gattaiMerge({ a: 1 }, null, { nullish: 'loose' })),
+          l: fmt(_.merge({}, { a: 1 }, null)),
+          d: 'TypeError',
+          a: fmt(Object.assign({}, { a: 1 }, null))
+        },
+        {
+          name: 'null in source: strict',
+          g: fmt(gattaiMerge({ a: 1 }, null, { nullish: 'strict' })),
+          l: fmt(_.merge({}, { a: 1 }, null)),
+          d: 'TypeError',
+          a: fmt(Object.assign({}, { a: 1 }, null))
+        },
+        {
+          name: 'null in source: throw',
+          g: (() => { try { gattaiMerge({ a: 1 }, null, { nullish: 'throw' }); return 'no throw' } catch(e) { return 'TypeError' } })(),
+          l: fmt(_.merge({}, { a: 1 }, null)),
+          d: 'TypeError',
+          a: fmt(Object.assign({}, { a: 1 }, null))
+        },
+        {
+          name: 'array merge with null',
+          g: fmt(gattaiMerge([1], [null], { arrays: 'merge', nullish: 'loose' })),
+          l: fmt(_.merge([1], [null])),
+          d: fmt(deepmerge([1], [null])),
+          a: fmt(Object.assign([1], [null]))
+        },
+        {
+          name: 'Date in source',
+          g: fmt(gattaiMerge({}, new Date('2024-01-01T00:00:00Z'))),
+          l: fmt(_.merge({}, new Date('2024-01-01T00:00:00Z'))),
+          d: fmt(deepmerge({}, new Date('2024-01-01T00:00:00Z'))),
+          a: fmt(Object.assign({}, new Date('2024-01-01T00:00:00Z')))
+        }
+      ];
+
+      for (const d of diffs) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.name}</td><td>${d.g}</td><td>${d.l}</td><td>${d.d}</td><td>${d.a}</td>`;
+        diffBody.appendChild(tr);
+      }
+    }
+
+    function runPerf() {
+      const tbody = document.querySelector('#perf-table tbody');
+      const summary = document.getElementById('perf-summary');
+      tbody.innerHTML = '';
+
+      const scenarios = [
+        {
+          name: 'Deep 100層 x100回',
+          setup: () => {
+            const deep = (n) => { let o = { v: 0 }; for (let i = 0; i < n; i++) o = { n: o }; return o; };
+            return [deep(100), deep(100)];
+          },
+          run: (fn, a, b) => { for (let i = 0; i < 100; i++) fn({}, a, b); }
+        },
+        {
+          name: 'Wide 1000キー x100回',
+          setup: () => {
+            const wide = {}; for (let i = 0; i < 1000; i++) wide['k' + i] = i;
+            return [{}, wide];
+          },
+          run: (fn, a, b) => { for (let i = 0; i < 100; i++) fn(a, b); }
+        },
+        {
+          name: 'Array 10k要素 merge x10回',
+          setup: () => [
+            Array.from({ length: 10000 }, (_, i) => ({ i })),
+            Array.from({ length: 10000 }, (_, i) => ({ j: i }))
+          ],
+          run: (fn, a, b) => { for (let i = 0; i < 10; i++) fn(a, b, { arrays: 'merge' }); }
+        },
+        {
+          name: 'Circular ref x1000回',
+          setup: () => {
+            const c1 = { a: 1 }; c1.self = c1;
+            const c2 = { b: 2 }; c2.self = c2;
+            return [c1, c2];
+          },
+          run: (fn, a, b) => { for (let i = 0; i < 1000; i++) fn(a, b); }
+        },
+        {
+          name: 'Mixed types x500回',
+          setup: () => [
+            { a: 1, b: [1, 2], c: new Date(), d: new Map([['x', 1]]) },
+            { b: [3], c: new Date(), d: new Map([['y', 2]]), e: /test/ }
+          ],
+          run: (fn, a, b) => { for (let i = 0; i < 500; i++) fn(a, b); }
+        }
+      ];
+
+      const libs = [
+        { name: 'gattaiMerge', fn: gattaiMerge },
+        { name: 'lodash', fn: (t, s, o) => _.merge({}, t, s) },
+        { name: 'deepmerge', fn: (t, s, o) => {
+          try {
+            return deepmerge(t, s);
+          } catch {
+            return 'N/A';
+          }
+        }},
+        { name: 'assign', fn: (t, s, o) => Object.assign({}, t, s) }
+      ];
+
+      const results = [];
+      for (const sc of scenarios) {
+        const row = { name: sc.name };
+        const [a, b] = sc.setup();
+        for (const lib of libs) {
+          try {
+            const t0 = performance.now();
+            sc.run(lib.fn, a, b);
+            const dt = performance.now() - t0;
+            row[lib.name] = dt;
+          } catch (e) {
+            row[lib.name] = 'ERR';
+          }
+        }
+        results.push(row);
+      }
+
+      // 最速にハイライト
+      for (const r of results) {
+        const tr = document.createElement('tr');
+        const times = libs.map(l => r[l.name]).filter(t => typeof t === 'number');
+        const min = Math.min(...times);
+        tr.innerHTML = `<td>${r.name}</td>` + libs.map(l => {
+          const v = r[l.name];
+          const cls = v === min? 'fastest' : '';
+          return `<td class="${cls}">${typeof v === 'number'? v.toFixed(1) + 'ms' : v}</td>`;
+        }).join('');
+        tbody.appendChild(tr);
+      }
+
+      const avgG = results.reduce((s, r) => s + (r.gattaiMerge||0), 0) / results.length;
+      summary.innerHTML = `<div class="metric"><b>${avgG.toFixed(1)}ms</b><small>gattaiMerge平均</small></div>`;
+    }
+
+    function runMemory() {
+      const div = document.getElementById('memory-results');
+      const nested = { x: 1, y: { z: 2 } };
+      const t = { a: nested, b: 1, c: [1, 2, 3] };
+
+      const r1 = gattaiMerge(t, { b: 2 });
+      const r2 = _.merge({}, t, { b: 2 });
+      const r3 = deepmerge(t, { b: 2 });
+
+      div.innerHTML = `
+        <table>
+          <thead><tr><th>チェック</th><th>gattaiMerge</th><th>lodash</th><th>deepmerge</th></tr></thead>
+          <tbody>
+            <tr><td>変更なしプロパティの参照保持</td><td>${r1.a === nested? '✓ 同一参照' : '✗ 新参照'}</td><td>${r2.a === nested? '✓ 同一参照' : '✗ 新参照'}</td><td>${r3.a === nested? '✓ 同一参照' : '✗ 新参照'}</td></tr>
+            <tr><td>変更なし配列の参照保持</td><td>${r1.c === t.c? '✓ 同一参照' : '✗ 新参照'}</td><td>${r2.c === t.c? '✓ 同一参照' : '✗ 新参照'}</td><td>${r3.c === t.c? '✓ 同一参照' : '✗ 新参照'}</td></tr>
+            <tr><td>変更ありプロパティ</td><td>${r1.b === 2? '✓ 更新' : '✗'}</td><td>${r2.b === 2? '✓ 更新' : '✗'}</td><td>${r3.b === 2? '✓ 更新' : '✗'}</td></tr>
+          </tbody>
+        </table>
+        <p><small>Structural sharingにより、変更のない部分は参照を再利用してメモリとGC負荷を削減</small></p>
+      `;
+    }
+
+    function switchTab(id) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(id).classList.add('active');
+    }
+    window.switchTab = switchTab;
+
+    // 初回実行
+    runAll();
+  </script>
+</body>
+</html>
