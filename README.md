@@ -72,12 +72,12 @@ If `true`, preserves property descriptors (getters/setters, etc.).
 
 If `true`, throws when descriptor cannot be merged (e.g. non-configurable or non-writable).
 
-## 🧠 Details
+## 📖 Details
 
 <details>
 <summary>Read more</summary>
 
-### 💡 Examples
+### Examples
 
 #### Array
 
@@ -132,7 +132,7 @@ gattaiMerge(
 // => Map { 'a' => 1, 'b' => 2 }
 ```
 
-### ⚠️ Caution
+### Caution
 
 Gattai Merge is optimized for performance using structural sharing (copy-on-write). Objects are only cloned when a change is actually required.
   
