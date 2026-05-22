@@ -534,7 +534,7 @@ function isUnsafeKey2(key) {
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.1
+ * @version 3.4.3
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -548,7 +548,7 @@ bunshin-clone/dist/index.js:
    * High-performance deep clone utility with descriptor support.
    * Handles circular ref and complex built-in types.
    *
-   * @version 1.2.1
+   * @version 1.2.2
    * @author Yusuke Kamiyamane
    * @license MIT
    * @copyright Copyright (c) Yusuke Kamiyamane

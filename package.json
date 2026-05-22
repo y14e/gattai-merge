@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "3.4.2",
+  "version": "3.4.3",
   "description": "High-performance deep merge utility with structural sharing",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -63,7 +63,7 @@
   "homepage": "https://github.com/y14e/gattai-merge#readme",
   "devDependencies": {
     "bun-types": "latest",
-    "bunshin-clone": "^1.2.1",
+    "bunshin-clone": "^1.2.2",
     "tsup": "^8.0.0",
     "typescript": "^5.6.0"
   },
