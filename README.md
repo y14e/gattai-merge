@@ -10,14 +10,14 @@ npm i gattai-merge
 
 ```ts
 // npm
-import gattaiMerge from 'gattai-merge';
+import gattaiMerge from 'gattai-merge@3.4.3';
 
 // CDNs
-import gattaiMerge from 'https://esm.sh/gattai-merge'
+import gattaiMerge from 'https://esm.sh/gattai-merge@3.4.3';
 // or
-import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge/+esm';
+import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge@3.4.3/+esm';
 // or
-import gattaiMerge from 'https://unpkg.com/gattai-merge/dist/index.js';
+import gattaiMerge from 'https://esm.unpkg.com/gattai-merge@3.4.3';
 ```
 
 ## 📦 APIs
