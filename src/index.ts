@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.4
+ * @version 3.4.5
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -21,10 +21,10 @@ import clone from 'bunshin-clone';
 // -----------------------------------------------------------------------------
 
 export interface GattaiMergeOptions {
-  readonly arrays?: 'replace' | 'concat' | 'merge' | ArrayMergeFunction;
-  readonly nullish?: 'loose' | 'strict' | 'throw';
-  readonly preserveDescriptors?: boolean;
-  readonly strictDescriptors?: boolean;
+  arrays: 'replace' | 'concat' | 'merge' | ArrayMergeFunction;
+  nullish: 'loose' | 'strict' | 'throw';
+  preserveDescriptors: boolean;
+  strictDescriptors: boolean;
 }
 
 type Object = Record<PropertyKey, unknown>;
@@ -50,7 +50,7 @@ type DeepMergedObject<
   : T;
 
 type MergeContext = {
-  options: GattaiMergeOptions;
+  options: Partial<GattaiMergeOptions>;
   ref: Refs;
   merge: (target: unknown, source: unknown) => unknown;
   clone: (node: unknown) => unknown;
@@ -80,11 +80,16 @@ export default function gattaiMerge<
 export default function gattaiMerge<
   T extends object,
   S extends readonly unknown[],
->(target: T, ...args: [...S, GattaiMergeOptions]): DeepMergedObject<T, S> {
+>(
+  target: T,
+  ...args: [...S, Partial<GattaiMergeOptions>]
+): DeepMergedObject<T, S> {
   const length = args.length;
   const last = length ? args[length - 1] : undefined;
   const hasOptions = isGattaiMergeOptions(last);
-  const options = (hasOptions ? last : EMPTY_OPTIONS) as GattaiMergeOptions;
+  const options = (
+    hasOptions ? last : EMPTY_OPTIONS
+  ) as Partial<GattaiMergeOptions>;
   let result = target;
 
   for (let i = 0, l = hasOptions ? length - 1 : length; i < l; i++) {
@@ -101,7 +106,7 @@ export default function gattaiMerge<
 function merge(
   target: unknown,
   source: unknown,
-  options: GattaiMergeOptions,
+  options: Partial<GattaiMergeOptions>,
   refs: Refs,
 ) {
   if (isSame(target, source)) {
@@ -201,7 +206,7 @@ function merge(
 function mergePlainObject(
   target: Object,
   source: Object,
-  options: GattaiMergeOptions,
+  options: Partial<GattaiMergeOptions>,
   refs: Refs,
 ) {
   refs.set(source, target); // [Refs.set]
@@ -248,7 +253,7 @@ function mergePlainObject(
 function mergePlainObjectFast(
   target: Object,
   source: Object,
-  options: GattaiMergeOptions,
+  options: Partial<GattaiMergeOptions>,
   refs: Refs,
 ) {
   refs.set(source, target); // [Refs.set]
@@ -352,7 +357,7 @@ const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
   },
 };
 
-function createArrayContext(options: GattaiMergeOptions, ref: Refs) {
+function createArrayContext(options: Partial<GattaiMergeOptions>, ref: Refs) {
   return {
     options,
     ref,
@@ -365,7 +370,7 @@ function createArrayContext(options: GattaiMergeOptions, ref: Refs) {
 function mergeArray(
   target: readonly unknown[],
   source: readonly unknown[],
-  options: GattaiMergeOptions,
+  options: Partial<GattaiMergeOptions>,
   ref: Refs,
 ) {
   const arrays = options.arrays ?? 'replace';
@@ -390,7 +395,7 @@ function mergeArray(
 function mergeMap<K, V>(
   target: ReadonlyMap<K, V>,
   source: ReadonlyMap<K, V>,
-  options: GattaiMergeOptions,
+  options: Partial<GattaiMergeOptions>,
   refs: Refs,
 ) {
   refs.set(source, target); // [Refs.set]
@@ -426,7 +431,7 @@ function mergeMap<K, V>(
 function mergeWithDescriptors(
   target: Object,
   source: Object,
-  options: GattaiMergeOptions,
+  options: Partial<GattaiMergeOptions>,
   refs: Refs,
 ) {
   const placeholder = Object.create(Object.getPrototypeOf(target));

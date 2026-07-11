@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "3.4.4",
+  "version": "3.4.5",
   "description": "High-performance deep merge utility with structural sharing",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -70,6 +70,6 @@
     "node": ">=18"
   },
   "dependencies": {
-    "bunshin-clone": "^1.2.3"
+    "bunshin-clone": "^1.2.4"
   }
 }

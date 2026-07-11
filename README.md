@@ -13,11 +13,11 @@ npm i gattai-merge
 import gattaiMerge from 'gattai-merge';
 
 // CDNs
-import gattaiMerge from 'https://esm.sh/gattai-merge@3.4.4';
+import gattaiMerge from 'https://esm.sh/gattai-merge@3.4.5';
 // or
-import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge@3.4.4/+esm';
+import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge@3.4.5/+esm';
 // or
-import gattaiMerge from 'https://esm.unpkg.com/gattai-merge@3.4.4';
+import gattaiMerge from 'https://esm.unpkg.com/gattai-merge@3.4.5';
 ```
 
 ## 📦 APIs
@@ -35,10 +35,10 @@ gattaiMerge(target, ...sources, options)
 
 ```ts
 interface GattaiMergeOptions {
-  arrays?: 'replace' | 'concat' | 'merge' | ArrayMergeFunction; // default: 'replace'
-  nullish?: 'loose' | 'strict' | 'throw';                       // default: 'loose'
-  preserveDescriptors?: boolean;                                // default: false
-  strictDescriptors?: boolean;                                  // default: false
+  arrays: 'replace' | 'concat' | 'merge' | ArrayMergeFunction; // default: 'replace'
+  nullish: 'loose' | 'strict' | 'throw';                       // default: 'loose'
+  preserveDescriptors: boolean;                                // default: false
+  strictDescriptors: boolean;                                  // default: false
 }
 ```
 
