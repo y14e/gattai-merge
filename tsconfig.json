@@ -1,3 +1,4 @@
+// https://www.typescriptlang.org/tsconfig/
 {
   "compilerOptions": {
     // type-checking
@@ -22,7 +23,7 @@
     "verbatimModuleSyntax": true,
 
     // language-and-environment
-    "lib": ["ES2024", "DOM"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "target": "ES2024",
 
     // completeness
