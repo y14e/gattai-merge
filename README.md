@@ -13,11 +13,11 @@ npm i gattai-merge
 import gattaiMerge from 'gattai-merge';
 
 // CDNs
-import gattaiMerge from 'https://esm.sh/gattai-merge@3.4.5';
+import gattaiMerge from 'https://esm.sh/gattai-merge@3.4.6';
 // or
-import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge@3.4.5/+esm';
+import gattaiMerge from 'https://cdn.jsdelivr.net/npm/gattai-merge@3.4.6/+esm';
 // or
-import gattaiMerge from 'https://esm.unpkg.com/gattai-merge@3.4.5';
+import gattaiMerge from 'https://esm.unpkg.com/gattai-merge@3.4.6';
 ```
 
 ## 📦 APIs
@@ -25,7 +25,7 @@ import gattaiMerge from 'https://esm.unpkg.com/gattai-merge@3.4.5';
 ```ts
 gattaiMerge(target, ...sources, options)
 // => DeepMergedObject<T, S>
-// 
+//
 // target: T
 // ...sources: ...S
 // options (optional): GattaiMergeOptions
@@ -44,13 +44,13 @@ interface GattaiMergeOptions {
 
 ### `arrays`
 
-* `'replace'`: replace target array (shallow copy)
-* `'concat'`: concatenate arrays
-* `'merge'`: deep merge by index
-* `ArrayMergeFunction`: custom array merge function (advanced usage)
+- `'replace'`: replace target array (shallow copy)
+- `'concat'`: concatenate arrays
+- `'merge'`: deep merge by index
+- `ArrayMergeFunction`: custom array merge function (advanced usage)
 
 #### ⚙️ ArrayMergeFunction
- 
+
 ```ts
 (target, source, {
   merge: (target, source) => {},
@@ -60,9 +60,9 @@ interface GattaiMergeOptions {
 
 ### `nullish`
 
-* `'loose'`: keep target value if source is nullish
-* `'strict'`: overwrite target value if source is nullish
-* `'throw'`: throw TypeError if source is nullish
+- `'loose'`: keep target value if source is nullish
+- `'strict'`: overwrite target value if source is nullish
+- `'throw'`: throw TypeError if source is nullish
 
 ### `preserveDescriptors`
 
@@ -135,7 +135,7 @@ gattaiMerge(
 ### Caution
 
 Gattai Merge is optimized for performance using structural sharing (copy-on-write). Objects are only cloned when a change is actually required.
-  
+
 #### What this implies
 
 If no changes occur during merging, the original target object is returned as-is:
@@ -161,9 +161,9 @@ console.log(a.x); // 2 (mutated!)
 
 #### When does this happen?
 
-* When merging produces **no effective changes**
-* When merging Map, Set, or nested structures with identical values
-* When structural sharing is preserved for performance
+- When merging produces **no effective changes**
+- When merging Map, Set, or nested structures with identical values
+- When structural sharing is preserved for performance
 
 #### How to avoid this
 

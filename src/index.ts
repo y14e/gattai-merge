@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.5
+ * @version 3.4.6
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -315,8 +315,6 @@ const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
   'replace' | 'concat' | 'merge',
   ArrayMergeFunction
 > = {
-  replace: (_, source) => source.slice(),
-
   concat: (target, source, { clone }) => {
     const result = new Array(target.length + source.length);
 
@@ -355,15 +353,16 @@ const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
 
     return result ?? (target as unknown[]);
   },
+  replace: (_, source) => source.slice(),
 };
 
 function createArrayContext(options: Partial<GattaiMergeOptions>, ref: Refs) {
   return {
-    options,
-    ref,
+    clone: (node: unknown) => clone(node, options, ref),
     merge: (target: unknown, source: unknown) =>
       merge(target, source, options, ref),
-    clone: (node: unknown) => clone(node, options, ref),
+    options,
+    ref,
   };
 }
 
