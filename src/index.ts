@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.7
+ * @version 3.4.8
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -21,7 +21,7 @@ import clone from 'bunshin-clone';
 // -----------------------------------------------------------------------------
 
 export interface GattaiMergeOptions {
-  arrays: 'replace' | 'concat' | 'merge' | ArrayMergeFunction;
+  arrays: 'concat' | 'merge' | 'replace' | ArrayMergeFunction;
   nullish: 'loose' | 'strict' | 'throw';
   preserveDescriptors: boolean;
   strictDescriptors: boolean;
@@ -312,7 +312,7 @@ function mergePlainObjectFast(
 }
 
 const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
-  'replace' | 'concat' | 'merge',
+  'concat' | 'merge' | 'replace',
   ArrayMergeFunction
 > = {
   concat: (target, source, { clone }) => {
@@ -328,7 +328,6 @@ const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
 
     return result;
   },
-
   merge: (target, source, { merge, clone }) => {
     let result: unknown[] | null = null;
 
