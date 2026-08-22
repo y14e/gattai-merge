@@ -1,8 +1,8 @@
 // node_modules/bunshin-clone/dist/index.js
 var EMPTY_OPTIONS = {};
 var { hasOwnProperty: HAS_OWN } = Object.prototype;
-function bunshinClone(source, options, refs) {
-  return clone(source, options ?? EMPTY_OPTIONS, refs ?? /* @__PURE__ */ new WeakMap());
+function bunshinClone(source, options = EMPTY_OPTIONS, refs = /* @__PURE__ */ new WeakMap()) {
+  return clone(source, options, refs);
 }
 function clone(node, options, refs) {
   if (!isObject(node)) {
@@ -361,7 +361,6 @@ function mergePlainObjectFast(target, source, options, refs) {
   return result ?? target;
 }
 var BUILTIN_ARRAY_MERGE_FUNCTIONS = {
-  replace: (_, source) => source.slice(),
   concat: (target, source, { clone: clone2 }) => {
     const result = new Array(target.length + source.length);
     for (let i = 0, l = target.length; i < l; i++) {
@@ -386,14 +385,15 @@ var BUILTIN_ARRAY_MERGE_FUNCTIONS = {
       }
     }
     return result ?? target;
-  }
+  },
+  replace: (_, source) => source.slice()
 };
 function createArrayContext(options, ref) {
   return {
-    options,
-    ref,
+    clone: (node) => bunshinClone(node, options, ref),
     merge: (target, source) => merge(target, source, options, ref),
-    clone: (node) => bunshinClone(node, options, ref)
+    options,
+    ref
   };
 }
 function mergeArray(target, source, options, ref) {
@@ -534,7 +534,7 @@ function isUnsafeKey2(key) {
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.3
+ * @version 3.4.7
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -548,7 +548,7 @@ bunshin-clone/dist/index.js:
    * High-performance deep clone utility with descriptor support.
    * Handles circular ref and complex built-in types.
    *
-   * @version 1.2.2
+   * @version 1.2.6
    * @author Yusuke Kamiyamane
    * @license MIT
    * @copyright Copyright (c) Yusuke Kamiyamane
