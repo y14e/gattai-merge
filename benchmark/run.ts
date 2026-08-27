@@ -1,6 +1,6 @@
 import { Bench } from 'tinybench';
 
-import gattaiMerge from 'gattai-merge';
+import { gattaiMerge } from 'gattai-merge';
 import merge from 'lodash.merge';
 import deepmerge from 'deepmerge';
 import { deepmerge as deepmergeTs } from 'deepmerge-ts';
