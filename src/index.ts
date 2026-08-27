@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.8
+ * @version 3.4.9
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -14,7 +14,7 @@
 // Imports
 // -----------------------------------------------------------------------------
 
-import clone from 'bunshin-clone';
+import { bunshinClone as clone } from 'bunshin-clone';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -73,14 +73,11 @@ const { hasOwnProperty: HAS_OWN } = Object.prototype;
 // APIs
 // -----------------------------------------------------------------------------
 
-export default function gattaiMerge<
-  T extends object,
-  S extends readonly unknown[],
->(target: T, ...args: S): DeepMergedObject<T, S>;
-export default function gattaiMerge<
-  T extends object,
-  S extends readonly unknown[],
->(
+export function gattaiMerge<T extends object, S extends readonly unknown[]>(
+  target: T,
+  ...args: S
+): DeepMergedObject<T, S>;
+export function gattaiMerge<T extends object, S extends readonly unknown[]>(
   target: T,
   ...args: [...S, Partial<GattaiMergeOptions>]
 ): DeepMergedObject<T, S> {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import gattaiMerge from '../src/index';
+import { gattaiMerge } from '../src/index';
 
 describe('gattaiMerge', () => {
   test('primitive values: source wins', () => {
@@ -112,8 +112,8 @@ describe('gattaiMerge', () => {
   test('descriptors: preserve getter/setter', () => {
     const source = {};
     Object.defineProperty(source, 'x', {
-      get: () => 42,
       enumerable: true,
+      get: () => 42,
     });
     const result = gattaiMerge({}, source, { preserveDescriptors: true });
     expect(result.x).toBe(42);
