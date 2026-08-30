@@ -2,27 +2,6 @@
   "name": "gattai-merge",
   "version": "3.4.9",
   "description": "High-performance deep merge utility with structural sharing",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "files": [
-    "dist",
-    "LICENSE",
-    "README.md"
-  ],
-  "scripts": {
-    "build": "tsup",
-    "prepublishOnly": "npm run build",
-    "lint": "tsc --noEmit"
-  },
   "keywords": [
     "array",
     "buffer",
@@ -50,16 +29,40 @@
     "set",
     "typescript"
   ],
-  "author": "Yusuke Kamiyamane",
-  "license": "MIT",
+  "homepage": "https://github.com/y14e/gattai-merge#readme",
+  "bugs": {
+    "url": "https://github.com/y14e/gattai-merge/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/y14e/gattai-merge.git"
   },
-  "bugs": {
-    "url": "https://github.com/y14e/gattai-merge/issues"
+  "license": "MIT",
+  "author": "Yusuke Kamiyamane",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
   },
-  "homepage": "https://github.com/y14e/gattai-merge#readme",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "bunshin-clone": "^1.2.7"
+  },
   "devDependencies": {
     "bun-types": "latest",
     "tsup": "^8.0.0",
@@ -70,8 +73,5 @@
   },
   "allowScripts": {
     "esbuild": true
-  },
-  "dependencies": {
-    "bunshin-clone": "^1.2.7"
   }
 }
