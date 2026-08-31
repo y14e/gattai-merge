@@ -60,9 +60,6 @@
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
-  "dependencies": {
-    "bunshin-clone": "^1.2.7"
-  },
   "devDependencies": {
     "bun-types": "latest",
     "tsup": "^8.0.0",
@@ -73,5 +70,8 @@
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "dependencies": {
+    "bunshin-clone": "^1.2.7"
   }
 }
