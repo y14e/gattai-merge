@@ -26,27 +26,27 @@ function clone(node, options, refs) {
   if (isPlainObject(node)) {
     const result = Object.create(Object.getPrototypeOf(node));
     refs.set(node, result);
-    for (const k in node) {
-      if (!HAS_OWN.call(node, k) || isUnsafeKey(k)) {
+    for (const key in node) {
+      if (!HAS_OWN.call(node, key) || isUnsafeKey(key)) {
         continue;
       }
-      result[k] = clone(node[k], options, refs);
+      result[key] = clone(node[key], options, refs);
     }
     return result;
   }
   if (node instanceof Map) {
     const result = /* @__PURE__ */ new Map();
     refs.set(node, result);
-    for (const [k, v] of node) {
-      result.set(clone(k, options, refs), clone(v, options, refs));
+    for (const [key, value] of node) {
+      result.set(clone(key, options, refs), clone(value, options, refs));
     }
     return result;
   }
   if (node instanceof Set) {
     const result = /* @__PURE__ */ new Set();
     refs.set(node, result);
-    for (const i of node) {
-      result.add(clone(i, options, refs));
+    for (const item of node) {
+      result.add(clone(item, options, refs));
     }
     return result;
   }
@@ -102,8 +102,8 @@ function clone(node, options, refs) {
   if (node instanceof URLSearchParams) {
     const result = new URLSearchParams();
     refs.set(node, result);
-    for (const [k, v] of node) {
-      result.append(k, v);
+    for (const [key, value] of node) {
+      result.append(key, value);
     }
     return result;
   }
@@ -151,8 +151,8 @@ function cloneError(value, options, refs) {
   if ("cause" in value && cause !== void 0) {
     result.cause = clone(cause, options, refs);
   }
-  for (const k of Object.keys(value)) {
-    result[k] = clone(value[k], options, refs);
+  for (const key of Object.keys(value)) {
+    result[key] = clone(value[key], options, refs);
   }
   return result;
 }
@@ -160,16 +160,16 @@ function cloneWithDescriptors(node, options, refs) {
   const result = Object.create(Object.getPrototypeOf(node));
   refs.set(node, result);
   const descs = Object.getOwnPropertyDescriptors(node);
-  forEachOwnKey(descs, (k) => {
-    if (isUnsafeKey(k)) {
+  forEachOwnKey(descs, (key) => {
+    if (isUnsafeKey(key)) {
       return;
     }
-    const desc = { ...descs[k] };
+    const desc = { ...descs[key] };
     if ("value" in desc) {
       desc.value = clone(desc.value, options, refs);
     }
     try {
-      Object.defineProperty(result, k, desc);
+      Object.defineProperty(result, key, desc);
     } catch (error) {
       if (options.strictDescriptors) {
         throw error;
@@ -179,11 +179,11 @@ function cloneWithDescriptors(node, options, refs) {
   return result;
 }
 function forEachOwnKey(object, fn) {
-  for (const k of Object.keys(object)) {
-    fn(k);
+  for (const key of Object.keys(object)) {
+    fn(key);
   }
-  for (const s of Object.getOwnPropertySymbols(object)) {
-    fn(s);
+  for (const symbol of Object.getOwnPropertySymbols(object)) {
+    fn(symbol);
   }
 }
 function isObject(value) {
@@ -251,11 +251,11 @@ function merge(target, source, options, refs) {
   if (target instanceof Set && source instanceof Set) {
     const result = /* @__PURE__ */ new Set();
     refs.set(source, result);
-    for (const i of target) {
-      result.add(bunshinClone(i, options, refs));
+    for (const item of target) {
+      result.add(bunshinClone(item, options, refs));
     }
-    for (const i of source) {
-      result.add(bunshinClone(i, options, refs));
+    for (const item of source) {
+      result.add(bunshinClone(item, options, refs));
     }
     return result;
   }
@@ -321,21 +321,21 @@ function mergePlainObject(target, source, options, refs) {
 function mergePlainObjectFast(target, source, options, refs) {
   refs.set(source, target);
   let result = null;
-  for (const k in source) {
-    if (!HAS_OWN2.call(source, k) || isUnsafeKey2(k)) {
+  for (const key in source) {
+    if (!HAS_OWN2.call(source, key) || isUnsafeKey2(key)) {
       continue;
     }
-    const targetValue = target[k];
-    const sourceValue = source[k];
+    const targetValue = target[key];
+    const sourceValue = source[key];
     if (targetValue === sourceValue) {
       continue;
     }
-    if (!HAS_OWN2.call(target, k)) {
+    if (!HAS_OWN2.call(target, key)) {
       if (result === null) {
         result = { ...target };
         refs.set(source, result);
       }
-      result[k] = bunshinClone(sourceValue, options, refs);
+      result[key] = bunshinClone(sourceValue, options, refs);
       continue;
     }
     if (sourceValue === null || typeof sourceValue !== "object" || targetValue === null || typeof targetValue !== "object") {
@@ -343,7 +343,7 @@ function mergePlainObjectFast(target, source, options, refs) {
         result = { ...target };
         refs.set(source, result);
       }
-      result[k] = sourceValue;
+      result[key] = sourceValue;
       continue;
     }
     const mergedValue = merge(targetValue, sourceValue, options, refs);
@@ -352,7 +352,7 @@ function mergePlainObjectFast(target, source, options, refs) {
         result = { ...target };
         refs.set(source, result);
       }
-      result[k] = mergedValue;
+      result[key] = mergedValue;
     }
   }
   return result ?? target;
@@ -404,23 +404,23 @@ function mergeArray(target, source, options, ref) {
 function mergeMap(target, source, options, refs) {
   refs.set(source, target);
   let result = null;
-  for (const [k, v] of source) {
-    if (!target.has(k)) {
+  for (const [key, sourceValue] of source) {
+    if (!target.has(key)) {
       if (result === null) {
         result = new Map(target);
         refs.set(source, result);
       }
-      result.set(k, bunshinClone(v, options, refs));
+      result.set(key, bunshinClone(sourceValue, options, refs));
       continue;
     }
-    const targetValue = target.get(k);
-    const mergedValue = merge(targetValue, v, options, refs);
+    const targetValue = target.get(key);
+    const mergedValue = merge(targetValue, sourceValue, options, refs);
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
         result = new Map(target);
         refs.set(source, result);
       }
-      result.set(k, mergedValue);
+      result.set(key, mergedValue);
     }
   }
   return result ?? target;
@@ -479,11 +479,11 @@ function mergeWithDescriptors(target, source, options, refs) {
   return placeholder;
 }
 function forEachOwnKey2(object, fn) {
-  for (const k of Object.keys(object)) {
-    fn(k);
+  for (const key of Object.keys(object)) {
+    fn(key);
   }
-  for (const s of Object.getOwnPropertySymbols(object)) {
-    fn(s);
+  for (const symbol of Object.getOwnPropertySymbols(object)) {
+    fn(symbol);
   }
 }
 function isGattaiMergeOptions(value) {
@@ -530,7 +530,7 @@ function isUnsafeKey2(key) {
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.10
+ * @version 3.4.11
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -544,7 +544,7 @@ bunshin-clone/dist/index.js:
    * High-performance deep clone utility with descriptor support.
    * Handles circular ref and complex built-in types.
    *
-   * @version 1.2.9
+   * @version 1.2.10
    * @author Yusuke Kamiyamane
    * @license MIT
    * @copyright Copyright (c) Yusuke Kamiyamane
