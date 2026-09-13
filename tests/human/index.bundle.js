@@ -26,27 +26,27 @@ function clone(node, options, refs) {
   if (isPlainObject(node)) {
     const result = Object.create(Object.getPrototypeOf(node));
     refs.set(node, result);
-    for (const key in node) {
-      if (!HAS_OWN.call(node, key) || isUnsafeKey(key)) {
+    for (const k in node) {
+      if (!HAS_OWN.call(node, k) || isUnsafeKey(k)) {
         continue;
       }
-      result[key] = clone(node[key], options, refs);
+      result[k] = clone(node[k], options, refs);
     }
     return result;
   }
   if (node instanceof Map) {
     const result = /* @__PURE__ */ new Map();
     refs.set(node, result);
-    for (const [key, value] of node) {
-      result.set(clone(key, options, refs), clone(value, options, refs));
+    for (const [k, v] of node) {
+      result.set(clone(k, options, refs), clone(v, options, refs));
     }
     return result;
   }
   if (node instanceof Set) {
     const result = /* @__PURE__ */ new Set();
     refs.set(node, result);
-    for (const item of node) {
-      result.add(clone(item, options, refs));
+    for (const i of node) {
+      result.add(clone(i, options, refs));
     }
     return result;
   }
@@ -78,33 +78,32 @@ function clone(node, options, refs) {
     refs.set(node, result);
     return result;
   }
-  if (node instanceof Error || typeof DOMException !== "undefined" && node instanceof DOMException) {
+  if (node instanceof Error || node instanceof DOMException) {
     return cloneError(node, options, refs);
   }
-  if (typeof Blob !== "undefined" && node instanceof Blob) {
+  if (node instanceof Blob) {
     const result = node.slice(0, node.size, node.type);
     refs.set(node, result);
     return result;
   }
   if (typeof ImageData !== "undefined" && node instanceof ImageData) {
-    const result = new ImageData(
-      new Uint8ClampedArray(node.data),
-      node.width,
-      node.height
-    );
+    const { data, width, height, colorSpace } = node;
+    const result = new ImageData(new Uint8ClampedArray(data), width, height, {
+      colorSpace
+    });
     refs.set(node, result);
     return result;
   }
-  if (typeof URL !== "undefined" && node instanceof URL) {
+  if (node instanceof URL) {
     const result = new URL(node.href);
     refs.set(node, result);
     return result;
   }
-  if (typeof URLSearchParams !== "undefined" && node instanceof URLSearchParams) {
+  if (node instanceof URLSearchParams) {
     const result = new URLSearchParams();
     refs.set(node, result);
-    for (const [key, value] of node) {
-      result.append(key, value);
+    for (const [k, v] of node) {
+      result.append(k, v);
     }
     return result;
   }
@@ -112,13 +111,12 @@ function clone(node, options, refs) {
   return node;
 }
 function cloneError(value, options, refs) {
+  const { name, message, cause, stack } = value;
   if (value instanceof DOMException) {
-    const result2 = new DOMException(value.message, value.name);
+    const result2 = new DOMException(message, name);
     refs.set(value, result2);
     return result2;
   }
-  const name = value.name || "Error";
-  const message = value.message || "";
   let result;
   switch (name) {
     case "EvalError":
@@ -144,17 +142,17 @@ function cloneError(value, options, refs) {
       result.name = name;
   }
   refs.set(value, result);
-  if (value.stack) {
+  if (stack) {
     try {
-      result.stack = value.stack;
+      result.stack = stack;
     } catch {
     }
   }
-  if ("cause" in value && value.cause !== void 0) {
-    result.cause = clone(value.cause, options, refs);
+  if ("cause" in value && cause !== void 0) {
+    result.cause = clone(cause, options, refs);
   }
-  for (const key of Object.keys(value)) {
-    result[key] = clone(value[key], options, refs);
+  for (const k of Object.keys(value)) {
+    result[k] = clone(value[k], options, refs);
   }
   return result;
 }
@@ -162,16 +160,16 @@ function cloneWithDescriptors(node, options, refs) {
   const result = Object.create(Object.getPrototypeOf(node));
   refs.set(node, result);
   const descs = Object.getOwnPropertyDescriptors(node);
-  forEachOwnKey(descs, (key) => {
-    if (isUnsafeKey(key)) {
+  forEachOwnKey(descs, (k) => {
+    if (isUnsafeKey(k)) {
       return;
     }
-    const desc = { ...descs[key] };
+    const desc = { ...descs[k] };
     if ("value" in desc) {
       desc.value = clone(desc.value, options, refs);
     }
     try {
-      Object.defineProperty(result, key, desc);
+      Object.defineProperty(result, k, desc);
     } catch (error) {
       if (options.strictDescriptors) {
         throw error;
@@ -181,12 +179,11 @@ function cloneWithDescriptors(node, options, refs) {
   return result;
 }
 function forEachOwnKey(object, fn) {
-  for (const key of Object.keys(object)) {
-    fn(key);
+  for (const k of Object.keys(object)) {
+    fn(k);
   }
-  const symbols = Object.getOwnPropertySymbols(object);
-  for (let i = 0, l = symbols.length; i < l; i++) {
-    fn(symbols[i]);
+  for (const s of Object.getOwnPropertySymbols(object)) {
+    fn(s);
   }
 }
 function isObject(value) {
@@ -254,11 +251,11 @@ function merge(target, source, options, refs) {
   if (target instanceof Set && source instanceof Set) {
     const result = /* @__PURE__ */ new Set();
     refs.set(source, result);
-    for (const item of target) {
-      result.add(bunshinClone(item, options, refs));
+    for (const i of target) {
+      result.add(bunshinClone(i, options, refs));
     }
-    for (const item of source) {
-      result.add(bunshinClone(item, options, refs));
+    for (const i of source) {
+      result.add(bunshinClone(i, options, refs));
     }
     return result;
   }
@@ -324,21 +321,21 @@ function mergePlainObject(target, source, options, refs) {
 function mergePlainObjectFast(target, source, options, refs) {
   refs.set(source, target);
   let result = null;
-  for (const key in source) {
-    if (!HAS_OWN2.call(source, key) || isUnsafeKey2(key)) {
+  for (const k in source) {
+    if (!HAS_OWN2.call(source, k) || isUnsafeKey2(k)) {
       continue;
     }
-    const targetValue = target[key];
-    const sourceValue = source[key];
+    const targetValue = target[k];
+    const sourceValue = source[k];
     if (targetValue === sourceValue) {
       continue;
     }
-    if (!HAS_OWN2.call(target, key)) {
+    if (!HAS_OWN2.call(target, k)) {
       if (result === null) {
         result = { ...target };
         refs.set(source, result);
       }
-      result[key] = bunshinClone(sourceValue, options, refs);
+      result[k] = bunshinClone(sourceValue, options, refs);
       continue;
     }
     if (sourceValue === null || typeof sourceValue !== "object" || targetValue === null || typeof targetValue !== "object") {
@@ -346,7 +343,7 @@ function mergePlainObjectFast(target, source, options, refs) {
         result = { ...target };
         refs.set(source, result);
       }
-      result[key] = sourceValue;
+      result[k] = sourceValue;
       continue;
     }
     const mergedValue = merge(targetValue, sourceValue, options, refs);
@@ -355,7 +352,7 @@ function mergePlainObjectFast(target, source, options, refs) {
         result = { ...target };
         refs.set(source, result);
       }
-      result[key] = mergedValue;
+      result[k] = mergedValue;
     }
   }
   return result ?? target;
@@ -407,23 +404,23 @@ function mergeArray(target, source, options, ref) {
 function mergeMap(target, source, options, refs) {
   refs.set(source, target);
   let result = null;
-  for (const [key, sourceValue] of source) {
-    if (!target.has(key)) {
+  for (const [k, v] of source) {
+    if (!target.has(k)) {
       if (result === null) {
         result = new Map(target);
         refs.set(source, result);
       }
-      result.set(key, bunshinClone(sourceValue, options, refs));
+      result.set(k, bunshinClone(v, options, refs));
       continue;
     }
-    const targetValue = target.get(key);
-    const mergedValue = merge(targetValue, sourceValue, options, refs);
+    const targetValue = target.get(k);
+    const mergedValue = merge(targetValue, v, options, refs);
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
         result = new Map(target);
         refs.set(source, result);
       }
-      result.set(key, mergedValue);
+      result.set(k, mergedValue);
     }
   }
   return result ?? target;
@@ -482,12 +479,11 @@ function mergeWithDescriptors(target, source, options, refs) {
   return placeholder;
 }
 function forEachOwnKey2(object, fn) {
-  for (const key of Object.keys(object)) {
-    fn(key);
+  for (const k of Object.keys(object)) {
+    fn(k);
   }
-  const symbols = Object.getOwnPropertySymbols(object);
-  for (let i = 0, l = symbols.length; i < l; i++) {
-    fn(symbols[i]);
+  for (const s of Object.getOwnPropertySymbols(object)) {
+    fn(s);
   }
 }
 function isGattaiMergeOptions(value) {
@@ -534,7 +530,7 @@ function isUnsafeKey2(key) {
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.9
+ * @version 3.4.10
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -548,7 +544,7 @@ bunshin-clone/dist/index.js:
    * High-performance deep clone utility with descriptor support.
    * Handles circular ref and complex built-in types.
    *
-   * @version 1.2.7
+   * @version 1.2.9
    * @author Yusuke Kamiyamane
    * @license MIT
    * @copyright Copyright (c) Yusuke Kamiyamane

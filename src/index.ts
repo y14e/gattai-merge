@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.9
+ * @version 3.4.10
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -158,12 +158,12 @@ function merge(
     const result = new Set<unknown>();
     refs.set(source, result); // [Ref.set]
 
-    for (const item of target) {
-      result.add(clone(item, options, refs));
+    for (const i of target) {
+      result.add(clone(i, options, refs));
     }
 
-    for (const item of source) {
-      result.add(clone(item, options, refs));
+    for (const i of source) {
+      result.add(clone(i, options, refs));
     }
 
     return result;
@@ -256,25 +256,25 @@ function mergePlainObjectFast(
   refs.set(source, target); // [Refs.set]
   let result = null;
 
-  for (const key in source) {
-    if (!HAS_OWN.call(source, key) || isUnsafeKey(key)) {
+  for (const k in source) {
+    if (!HAS_OWN.call(source, k) || isUnsafeKey(k)) {
       continue;
     }
 
-    const targetValue = target[key];
-    const sourceValue = source[key];
+    const targetValue = target[k];
+    const sourceValue = source[k];
 
     if (targetValue === sourceValue) {
       continue;
     }
 
-    if (!HAS_OWN.call(target, key)) {
+    if (!HAS_OWN.call(target, k)) {
       if (result === null) {
         result = { ...target };
         refs.set(source, result); // [Refs.set]
       }
 
-      result[key] = clone(sourceValue, options, refs);
+      result[k] = clone(sourceValue, options, refs);
       continue;
     }
 
@@ -289,7 +289,7 @@ function mergePlainObjectFast(
         refs.set(source, result); // [Refs.set]
       }
 
-      result[key] = sourceValue;
+      result[k] = sourceValue;
       continue;
     }
 
@@ -301,7 +301,7 @@ function mergePlainObjectFast(
         refs.set(source, result); // [Refs.set]
       }
 
-      result[key] = mergedValue;
+      result[k] = mergedValue;
     }
   }
 
@@ -396,19 +396,19 @@ function mergeMap<K, V>(
   refs.set(source, target); // [Refs.set]
   let result = null;
 
-  for (const [key, sourceValue] of source) {
-    if (!target.has(key)) {
+  for (const [k, v] of source) {
+    if (!target.has(k)) {
       if (result === null) {
         result = new Map(target);
         refs.set(source, result); // [Refs.set]
       }
 
-      result.set(key, clone(sourceValue, options, refs));
+      result.set(k, clone(v, options, refs));
       continue;
     }
 
-    const targetValue = target.get(key);
-    const mergedValue = merge(targetValue, sourceValue, options, refs);
+    const targetValue = target.get(k);
+    const mergedValue = merge(targetValue, v, options, refs);
 
     if (!isSame(mergedValue, targetValue)) {
       if (result === null) {
@@ -416,7 +416,7 @@ function mergeMap<K, V>(
         refs.set(source, result); // [Refs.set]
       }
 
-      result.set(key, mergedValue as V);
+      result.set(k, mergedValue as V);
     }
   }
 
@@ -513,14 +513,12 @@ function mergeWithDescriptors(
 // -----------------------------------------------------------------------------
 
 function forEachOwnKey(object: object, fn: (key: string | symbol) => void) {
-  for (const key of Object.keys(object)) {
-    fn(key);
+  for (const k of Object.keys(object)) {
+    fn(k);
   }
 
-  const symbols = Object.getOwnPropertySymbols(object);
-
-  for (let i = 0, l = symbols.length; i < l; i++) {
-    fn(symbols[i] as symbol);
+  for (const s of Object.getOwnPropertySymbols(object)) {
+    fn(s);
   }
 }
 
