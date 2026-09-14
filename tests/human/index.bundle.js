@@ -385,21 +385,21 @@ var BUILTIN_ARRAY_MERGE_FUNCTIONS = {
   },
   replace: (_, source) => source.slice()
 };
-function createArrayContext(options, ref) {
+function createArrayContext(options, refs) {
   return {
-    clone: (node) => bunshinClone(node, options, ref),
-    merge: (target, source) => merge(target, source, options, ref),
+    clone: (node) => bunshinClone(node, options, refs),
+    merge: (target, source) => merge(target, source, options, refs),
     options,
-    ref
+    refs
   };
 }
-function mergeArray(target, source, options, ref) {
+function mergeArray(target, source, options, refs) {
   const arrays = options.arrays ?? "replace";
   const nullish = options.nullish ?? "loose";
   if (arrays === "merge" && nullish !== "loose" && isShallowArray(target) && isShallowArray(source)) {
     return source.slice();
   }
-  return (typeof arrays !== "function" ? BUILTIN_ARRAY_MERGE_FUNCTIONS[arrays] : arrays)(target, source, createArrayContext(options, ref));
+  return (typeof arrays !== "function" ? BUILTIN_ARRAY_MERGE_FUNCTIONS[arrays] : arrays)(target, source, createArrayContext(options, refs));
 }
 function mergeMap(target, source, options, refs) {
   refs.set(source, target);
@@ -530,7 +530,7 @@ function isUnsafeKey2(key) {
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.11
+ * @version 3.4.12
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane

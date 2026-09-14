@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.11
+ * @version 3.4.12
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -51,7 +51,7 @@ type DeepMergedObject<
 
 type MergeContext = {
   options: Partial<GattaiMergeOptions>;
-  ref: Refs;
+  refs: Refs;
   merge: (target: unknown, source: unknown) => unknown;
   clone: (node: unknown) => unknown;
 };
@@ -352,13 +352,13 @@ const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
   replace: (_, source) => source.slice(),
 };
 
-function createArrayContext(options: Partial<GattaiMergeOptions>, ref: Refs) {
+function createArrayContext(options: Partial<GattaiMergeOptions>, refs: Refs) {
   return {
-    clone: (node: unknown) => clone(node, options, ref),
+    clone: (node: unknown) => clone(node, options, refs),
     merge: (target: unknown, source: unknown) =>
-      merge(target, source, options, ref),
+      merge(target, source, options, refs),
     options,
-    ref,
+    refs,
   };
 }
 
@@ -366,7 +366,7 @@ function mergeArray(
   target: readonly unknown[],
   source: readonly unknown[],
   options: Partial<GattaiMergeOptions>,
-  ref: Refs,
+  refs: Refs,
 ) {
   const arrays = options.arrays ?? 'replace';
   const nullish = options.nullish ?? 'loose';
@@ -384,7 +384,7 @@ function mergeArray(
     typeof arrays !== 'function'
       ? BUILTIN_ARRAY_MERGE_FUNCTIONS[arrays]
       : arrays
-  )(target, source, createArrayContext(options, ref));
+  )(target, source, createArrayContext(options, refs));
 }
 
 function mergeMap<K, V>(

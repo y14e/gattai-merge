@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "3.4.11",
+  "version": "3.4.12",
   "description": "High-performance deep merge utility with structural sharing",
   "keywords": [
     "array",
