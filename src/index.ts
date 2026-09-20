@@ -3,7 +3,7 @@
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.12
+ * @version 3.4.13
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -14,7 +14,13 @@
 // Imports
 // -----------------------------------------------------------------------------
 
-import { bunshinClone as clone } from 'bunshin-clone';
+import {
+  bunshinClone as clone,
+  forEachOwnKey,
+  isObject,
+  isPlainObject,
+  isUnsafeKey,
+} from 'bunshin-clone';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -512,16 +518,6 @@ function mergeWithDescriptors(
 // Utils
 // -----------------------------------------------------------------------------
 
-function forEachOwnKey(object: object, fn: (key: string | symbol) => void) {
-  for (const key of Object.keys(object)) {
-    fn(key);
-  }
-
-  for (const symbol of Object.getOwnPropertySymbols(object)) {
-    fn(symbol);
-  }
-}
-
 function isGattaiMergeOptions(value: unknown) {
   if (!isPlainObject(value)) {
     return false;
@@ -542,21 +538,8 @@ function isGattaiMergeOptions(value: unknown) {
   );
 }
 
-function isObject(value: unknown) {
-  return typeof value === 'object' && value !== null;
-}
-
 function isObjectPrototype(value: unknown) {
   return Object.getPrototypeOf(value) === Object.prototype;
-}
-
-function isPlainObject(value: unknown) {
-  if (value === null || typeof value !== 'object') {
-    return false;
-  }
-
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
 }
 
 function isSame(a: unknown, b: unknown) {
@@ -572,11 +555,4 @@ function isShallowArray(array: readonly unknown[]) {
   }
 
   return true;
-}
-
-function isUnsafeKey(key: PropertyKey) {
-  return (
-    typeof key === 'string' &&
-    (key === '__proto__' || key === 'prototype' || key === 'constructor')
-  );
 }

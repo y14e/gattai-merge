@@ -178,12 +178,12 @@ function cloneWithDescriptors(node, options, refs) {
   });
   return result;
 }
-function forEachOwnKey(object, fn) {
+function forEachOwnKey(object, callback) {
   for (const key of Object.keys(object)) {
-    fn(key);
+    callback(key);
   }
   for (const symbol of Object.getOwnPropertySymbols(object)) {
-    fn(symbol);
+    callback(symbol);
   }
 }
 function isObject(value) {
@@ -231,8 +231,8 @@ function merge(target, source, options, refs) {
   if (target == null) {
     return bunshinClone(source, options, refs);
   }
-  const isObjectSource = isObject2(source);
-  if (!isObject2(target) || !isObjectSource) {
+  const isObjectSource = isObject(source);
+  if (!isObject(target) || !isObjectSource) {
     return isObjectSource ? bunshinClone(source, options, refs) : source;
   }
   if (Object.isFrozen(target)) {
@@ -259,7 +259,7 @@ function merge(target, source, options, refs) {
     }
     return result;
   }
-  if (isPlainObject2(target) && isPlainObject2(source)) {
+  if (isPlainObject(target) && isPlainObject(source)) {
     if (!options.preserveDescriptors) {
       if (isObjectPrototype(target) && isObjectPrototype(source)) {
         return mergePlainObjectFast(
@@ -299,8 +299,8 @@ function mergePlainObject(target, source, options, refs) {
     }
     refs.set(source, result);
   }
-  forEachOwnKey2(source, (sourceKey) => {
-    if (isUnsafeKey2(sourceKey)) {
+  forEachOwnKey(source, (sourceKey) => {
+    if (isUnsafeKey(sourceKey)) {
       return;
     }
     const targetValue = target[sourceKey];
@@ -322,7 +322,7 @@ function mergePlainObjectFast(target, source, options, refs) {
   refs.set(source, target);
   let result = null;
   for (const key in source) {
-    if (!HAS_OWN2.call(source, key) || isUnsafeKey2(key)) {
+    if (!HAS_OWN2.call(source, key) || isUnsafeKey(key)) {
       continue;
     }
     const targetValue = target[key];
@@ -431,8 +431,8 @@ function mergeWithDescriptors(target, source, options, refs) {
   const targetDescs = Object.getOwnPropertyDescriptors(target);
   const sourceDescs = Object.getOwnPropertyDescriptors(source);
   let result = null;
-  forEachOwnKey2(sourceDescs, (key) => {
-    if (isUnsafeKey2(key)) {
+  forEachOwnKey(sourceDescs, (key) => {
+    if (isUnsafeKey(key)) {
       return;
     }
     const targetDesc = targetDescs[key];
@@ -478,16 +478,8 @@ function mergeWithDescriptors(target, source, options, refs) {
   );
   return placeholder;
 }
-function forEachOwnKey2(object, fn) {
-  for (const key of Object.keys(object)) {
-    fn(key);
-  }
-  for (const symbol of Object.getOwnPropertySymbols(object)) {
-    fn(symbol);
-  }
-}
 function isGattaiMergeOptions(value) {
-  if (!isPlainObject2(value)) {
+  if (!isPlainObject(value)) {
     return false;
   }
   const keys = Object.keys(value);
@@ -498,39 +490,26 @@ function isGattaiMergeOptions(value) {
     (key) => key === "arrays" || key === "nullish" || key === "preserveDescriptors" || key === "strictDescriptors"
   );
 }
-function isObject2(value) {
-  return typeof value === "object" && value !== null;
-}
 function isObjectPrototype(value) {
   return Object.getPrototypeOf(value) === Object.prototype;
-}
-function isPlainObject2(value) {
-  if (value === null || typeof value !== "object") {
-    return false;
-  }
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
 }
 function isSame(a, b) {
   return a === b || a !== a && b !== b;
 }
 function isShallowArray(array) {
   for (let i = 0, l = array.length; i < l; i++) {
-    if (isObject2(array[i])) {
+    if (isObject(array[i])) {
       return false;
     }
   }
   return true;
-}
-function isUnsafeKey2(key) {
-  return typeof key === "string" && (key === "__proto__" || key === "prototype" || key === "constructor");
 }
 /**
  * Gattai Merge
  * High-performance deep merge utility with structural sharing.
  * Supports circular ref and complex built-in types.
  *
- * @version 3.4.12
+ * @version 3.4.13
  * @author Yusuke Kamiyamane
  * @license MIT
  * @copyright Copyright (c) Yusuke Kamiyamane
@@ -544,7 +523,7 @@ bunshin-clone/dist/index.js:
    * High-performance deep clone utility with descriptor support.
    * Handles circular ref and complex built-in types.
    *
-   * @version 1.2.10
+   * @version 1.2.12
    * @author Yusuke Kamiyamane
    * @license MIT
    * @copyright Copyright (c) Yusuke Kamiyamane

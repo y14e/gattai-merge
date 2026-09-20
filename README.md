@@ -13,11 +13,11 @@ npm i gattai-merge
 import { gattaiMerge } from 'gattai-merge';
 
 // CDNs
-import { gattaiMerge } from 'https://esm.sh/gattai-merge@3.4.12';
+import { gattaiMerge } from 'https://esm.sh/gattai-merge@3.4.13';
 // or
-import { gattaiMerge } from 'https://cdn.jsdelivr.net/npm/gattai-merge@3.4.12/+esm';
+import { gattaiMerge } from 'https://cdn.jsdelivr.net/npm/gattai-merge@3.4.13/+esm';
 // or
-import { gattaiMerge } from 'https://esm.unpkg.com/gattai-merge@3.4.12';
+import { gattaiMerge } from 'https://esm.unpkg.com/gattai-merge@3.4.13';
 ```
 
 ## 📦 APIs
