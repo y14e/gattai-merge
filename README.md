@@ -13,21 +13,21 @@ npm i gattai-merge
 import { gattaiMerge } from 'gattai-merge';
 
 // CDNs
-import { gattaiMerge } from 'https://esm.sh/gattai-merge@3.4.13';
+import { gattaiMerge } from 'https://esm.sh/gattai-merge@<x.x.x>';
 // or
-import { gattaiMerge } from 'https://cdn.jsdelivr.net/npm/gattai-merge@3.4.13/+esm';
+import { gattaiMerge } from 'https://cdn.jsdelivr.net/npm/gattai-merge@<x.x.x>/+esm';
 // or
-import { gattaiMerge } from 'https://esm.unpkg.com/gattai-merge@3.4.13';
+import { gattaiMerge } from 'https://esm.unpkg.com/gattai-merge@<x.x.x>';
 ```
 
 ## 📦 APIs
 
 ```ts
-gattaiMerge(target, ...sources, options)
-// => DeepMergedObject<T, S>
+gattaiMerge<T, U>(target, ...sources, options)
+// => Merge<T, U>
 //
 // target: T
-// ...sources: ...S
+// ...sources: U
 // options (optional): GattaiMergeOptions
 ```
 

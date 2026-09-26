@@ -120,6 +120,261 @@ describe('gattaiMerge', () => {
     expect(Object.getOwnPropertyDescriptor(result, 'x')?.get).toBeDefined();
   });
 
+  test('descriptors: preserves data descriptor attributes', () => {
+    const source = {};
+
+    Object.defineProperty(source, 'x', {
+      configurable: false,
+      enumerable: false,
+      value: 42,
+      writable: false,
+    });
+
+    const result = gattaiMerge({}, source, { preserveDescriptors: true });
+    const desc = Object.getOwnPropertyDescriptor(result, 'x');
+
+    expect(desc).toEqual({
+      configurable: false,
+      enumerable: false,
+      value: 42,
+      writable: false,
+    });
+  });
+
+  test('descriptors: source descriptor replaces target descriptor', () => {
+    const target = {};
+    const source = {};
+
+    Object.defineProperty(target, 'x', {
+      configurable: false,
+      enumerable: false,
+      value: 1,
+      writable: false,
+    });
+
+    Object.defineProperty(source, 'x', {
+      configurable: true,
+      enumerable: true,
+      value: 2,
+      writable: true,
+    });
+
+    const result = gattaiMerge(target, source, {
+      preserveDescriptors: true,
+    });
+
+    expect(Object.getOwnPropertyDescriptor(result, 'x')).toEqual({
+      configurable: true,
+      enumerable: true,
+      value: 2,
+      writable: true,
+    });
+  });
+
+  test('descriptors: replaces data descriptor with accessor descriptor', () => {
+    const target = {};
+
+    Object.defineProperty(target, 'x', {
+      configurable: false,
+      value: 1,
+      writable: false,
+    });
+
+    const get = () => 42;
+    const source = {};
+
+    Object.defineProperty(source, 'x', {
+      configurable: true,
+      enumerable: true,
+      get,
+    });
+
+    const result = gattaiMerge(target, source, {
+      preserveDescriptors: true,
+    });
+
+    const desc = Object.getOwnPropertyDescriptor(result, 'x');
+
+    expect(desc?.get).toBe(get);
+    expect(desc?.set).toBeUndefined();
+    expect(desc?.enumerable).toBe(true);
+    expect(desc?.configurable).toBe(true);
+    expect(result.x).toBe(42);
+  });
+
+  test('descriptors: replaces accessor descriptor with data descriptor', () => {
+    const target = {};
+
+    Object.defineProperty(target, 'x', {
+      get: () => 1,
+    });
+
+    const source = {};
+
+    Object.defineProperty(source, 'x', {
+      configurable: true,
+      enumerable: true,
+      value: 42,
+      writable: true,
+    });
+
+    const result = gattaiMerge(target, source, {
+      preserveDescriptors: true,
+    });
+
+    expect(Object.getOwnPropertyDescriptor(result, 'x')).toEqual({
+      configurable: true,
+      enumerable: true,
+      value: 42,
+      writable: true,
+    });
+  });
+
+  test('descriptors: unchanged descriptor keeps target reference', () => {
+    const value = { nested: true };
+    const target = {};
+
+    Object.defineProperty(target, 'x', {
+      configurable: true,
+      enumerable: true,
+      value,
+      writable: true,
+    });
+
+    const source = {};
+
+    Object.defineProperty(source, 'x', {
+      configurable: true,
+      enumerable: true,
+      value,
+      writable: true,
+    });
+
+    const result = gattaiMerge(target, source, {
+      preserveDescriptors: true,
+    });
+
+    expect(result).toBe(target);
+  });
+
+  test('descriptors: descriptor-only change creates new result', () => {
+    const target = {};
+    const source = {};
+
+    Object.defineProperty(target, 'x', {
+      configurable: true,
+      enumerable: true,
+      value: 1,
+      writable: true,
+    });
+
+    Object.defineProperty(source, 'x', {
+      configurable: true,
+      enumerable: false,
+      value: 1,
+      writable: false,
+    });
+
+    const result = gattaiMerge(target, source, {
+      preserveDescriptors: true,
+    });
+
+    expect(result).not.toBe(target);
+    expect(Object.getOwnPropertyDescriptor(result, 'x')).toEqual({
+      configurable: true,
+      enumerable: false,
+      value: 1,
+      writable: false,
+    });
+  });
+
+  test('descriptors: merges descriptor values deeply', () => {
+    const target = {};
+    const source = {};
+
+    Object.defineProperty(target, 'x', {
+      configurable: true,
+      enumerable: true,
+      value: { a: 1 },
+      writable: true,
+    });
+
+    Object.defineProperty(source, 'x', {
+      configurable: true,
+      enumerable: true,
+      value: { b: 2 },
+      writable: true,
+    });
+
+    const result = gattaiMerge(target, source, {
+      preserveDescriptors: true,
+    });
+
+    expect(result.x).toEqual({ a: 1, b: 2 });
+    expect(Object.getOwnPropertyDescriptor(result, 'x')).toEqual({
+      configurable: true,
+      enumerable: true,
+      value: { a: 1, b: 2 },
+      writable: true,
+    });
+  });
+
+  test('descriptors: preserves symbol descriptors', () => {
+    const key = Symbol('x');
+    const source = {};
+
+    Object.defineProperty(source, key, {
+      configurable: false,
+      enumerable: false,
+      value: 42,
+      writable: false,
+    });
+
+    const result = gattaiMerge({}, source, {
+      preserveDescriptors: true,
+    });
+
+    expect(Object.getOwnPropertyDescriptor(result, key)).toEqual({
+      configurable: false,
+      enumerable: false,
+      value: 42,
+      writable: false,
+    });
+  });
+
+  test('descriptors: preserves circular references', () => {
+    const target: Record<string, unknown> = {};
+    const source: Record<string, unknown> = {};
+
+    Object.defineProperty(target, 'self', {
+      configurable: true,
+      enumerable: true,
+      value: target,
+      writable: true,
+    });
+
+    Object.defineProperty(source, 'self', {
+      configurable: true,
+      enumerable: true,
+      value: source,
+      writable: true,
+    });
+
+    Object.defineProperty(source, 'x', {
+      configurable: true,
+      enumerable: true,
+      value: 1,
+      writable: true,
+    });
+
+    const result = gattaiMerge(target, source, {
+      preserveDescriptors: true,
+    });
+
+    expect(result.self).toBe(result);
+    expect(result.x).toBe(1);
+  });
+
   test('unmergeable types: source is cloned', () => {
     const date = new Date('2024-01-01');
     const regexp = /test/;
