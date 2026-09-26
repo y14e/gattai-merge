@@ -22,14 +22,7 @@ export interface GattaiMergeOptions {
 }
 
 type Arrays = (typeof ARRAYS)[number] | ArrayMergeFunction;
-type Merge<T, U extends unknown[]> = U extends [infer F, ...infer R]
-  ? Merge<MergeTwo<T, F>, R>
-  : T;
-type MergeArray<T extends unknown[], U extends unknown[]> = [...T, ...U];
-type MergeMap<T, U> = T | U extends Map<infer K, infer V> ? Map<K, V> : never;
-type MergePlainObject<T, U> = Prettify<Omit<T, keyof U> & U>;
-type MergeSet<T, U> = T | U extends Set<infer V> ? Set<V> : never;
-type MergeTwo<T, U> = T extends object
+type Merge<T, U> = T extends object
   ? U extends object
     ? T extends unknown[]
       ? U extends unknown[]
@@ -50,6 +43,10 @@ type MergeTwo<T, U> = T extends object
             : U
     : U
   : U;
+type MergeArray<T extends unknown[], U extends unknown[]> = [...T, ...U];
+type MergeMap<T, U> = T | U extends Map<infer K, infer V> ? Map<K, V> : never;
+type MergePlainObject<T, U> = Prettify<Omit<T, keyof U> & U>;
+type MergeSet<T, U> = T | U extends Set<infer V> ? Set<V> : never;
 type Nullish = (typeof NULLISH)[number];
 type PlainObject = Record<PropertyKey, unknown>;
 type Prettify<T> = { [K in keyof T]: T[K] } & {};
@@ -65,6 +62,95 @@ type ArrayMergeFunction = (
   source: unknown[],
   context: MergeContext,
 ) => unknown[];
+
+type ArrayOption<O> = 'arrays' extends keyof O
+  ? O extends { arrays: infer A }
+    ? A
+    : O extends { arrays?: infer A }
+      ? Exclude<A, undefined> | 'replace'
+      : 'replace'
+  : 'replace';
+type NullishOption<O> = 'nullish' extends keyof O
+  ? O extends { nullish: infer N }
+    ? N
+    : O extends { nullish?: infer N }
+      ? Exclude<N, undefined> | 'loose'
+      : 'loose'
+  : 'loose';
+type MergeWithOptions<T, U, O> = U extends null | undefined
+  ? MergeNullish<T, U, NullishOption<O>>
+  : T extends object
+    ? U extends object
+      ? T extends unknown[]
+        ? U extends unknown[]
+          ? MergeArrayWithOptions<T, U, O>
+          : U
+        : T extends PlainObject
+          ? U extends PlainObject
+            ? MergePlainObjectWithOptions<T, U, O>
+            : U
+          : T extends Map<unknown, unknown>
+            ? U extends Map<unknown, unknown>
+              ? MergeMap<T, U>
+              : U
+            : T extends Set<unknown>
+              ? U extends Set<unknown>
+                ? MergeSet<T, U>
+                : U
+              : U
+      : U
+    : U;
+type MergeAllWithOptions<T, U extends unknown[], O> = U extends [
+  infer F,
+  ...infer R,
+]
+  ? MergeAllWithOptions<MergeWithOptions<T, F, O>, R, O>
+  : T;
+type MergeArrayWithOptions<
+  T extends unknown[],
+  U extends unknown[],
+  O,
+> = MergeArrayByStrategy<T, U, O, ArrayOption<O>>;
+type MergeArrayByStrategy<
+  T extends unknown[],
+  U extends unknown[],
+  O,
+  A,
+> = A extends 'concat'
+  ? MergeArrayConcat<T, U>
+  : A extends 'merge'
+    ? MergeArrayByIndex<T, U, O>
+    : A extends 'replace'
+      ? U
+      : A extends ArrayMergeFunction
+        ? ReturnType<A>
+        : U;
+type MergeArrayConcat<T extends unknown[], U extends unknown[]> = number extends
+  | T['length']
+  | U['length']
+  ? Array<T[number] | U[number]>
+  : [...T, ...U];
+type MergeArrayByIndex<
+  T extends unknown[],
+  U extends unknown[],
+  O,
+> = number extends T['length'] | U['length']
+  ? Array<T[number] | U[number] | MergeWithOptions<T[number], U[number], O>>
+  : T extends [infer TF, ...infer TR]
+    ? U extends [infer UF, ...infer UR]
+      ? [MergeWithOptions<TF, UF, O>, ...MergeArrayByIndex<TR, UR, O>]
+      : T
+    : U;
+type MergeNullish<T, U, N> = N extends 'strict'
+  ? U
+  : N extends 'throw'
+    ? never
+    : T;
+type MergePlainObjectWithOptions<T, U, O> = Prettify<
+  Omit<T, keyof U> & {
+    [K in keyof U]: K extends keyof T ? MergeWithOptions<T[K], U[K], O> : U[K];
+  }
+>;
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -83,7 +169,15 @@ export function gattaiMerge<
   T,
   U extends unknown[],
   O extends Partial<GattaiMergeOptions>,
->(target: T, ...args: [...U, O] | U): Merge<T, U>;
+>(
+  target: T,
+  ...args: [...sources: U, options: O]
+): MergeAllWithOptions<T, U, O>;
+
+export function gattaiMerge<T, U extends unknown[]>(
+  target: T,
+  ...sources: U
+): MergeAllWithOptions<T, U, Record<never, never>>;
 
 export function gattaiMerge(target: unknown, ...args: unknown[]): unknown {
   const { length } = args;
@@ -137,10 +231,10 @@ function merge<T, S>(
   source: S,
   settings: GattaiMergeOptions,
   refs: Refs,
-): MergeTwo<T, S> {
+): Merge<T, S> {
   // Same
   if (isSame(target, source)) {
-    return target as MergeTwo<T, S>;
+    return target as Merge<T, S>;
   }
 
   // Nullish
@@ -148,27 +242,28 @@ function merge<T, S>(
     const { nullish } = settings;
 
     if (nullish === 'strict') {
-      return source as MergeTwo<T, S>;
+      return source as Merge<T, S>;
     }
 
     if (nullish === 'throw') {
       throw new TypeError('Source object nullish');
     }
 
-    return target as MergeTwo<T, S>;
+    return target as Merge<T, S>;
   }
 
   if (target == null) {
-    return clone(source, settings, refs) as MergeTwo<T, S>;
+    return clone(source, settings, refs) as Merge<T, S>;
   }
 
   // Primitive
   const isObjectSource = isObject(source);
 
   if (!isObject(target) || !isObjectSource) {
-    return (
-      isObjectSource ? clone(source, settings, refs) : source
-    ) as MergeTwo<T, S>;
+    return (isObjectSource ? clone(source, settings, refs) : source) as Merge<
+      T,
+      S
+    >;
   }
 
   // Frozen
@@ -178,12 +273,12 @@ function merge<T, S>(
 
   // [Refs]
   if (refs.has(source)) {
-    return refs.get(source) as MergeTwo<T, S>;
+    return refs.get(source) as Merge<T, S>;
   }
 
   // Array
   if (Array.isArray(target) && Array.isArray(source)) {
-    return mergeArray(target, source, settings, refs) as MergeTwo<T, S>;
+    return mergeArray(target, source, settings, refs) as Merge<T, S>;
   }
 
   // Plain object
@@ -193,28 +288,25 @@ function merge<T, S>(
         isObjectPrototype(target) && isObjectPrototype(source)
           ? mergePlainObjectFast(target, source, settings, refs)
           : mergePlainObject(target, source, settings, refs)
-      ) as MergeTwo<T, S>;
+      ) as Merge<T, S>;
     }
 
     // With descriptors
-    return mergeWithDescriptors(target, source, settings, refs) as MergeTwo<
-      T,
-      S
-    >;
+    return mergeWithDescriptors(target, source, settings, refs) as Merge<T, S>;
   }
 
   // Map
   if (target instanceof Map && source instanceof Map) {
-    return mergeMap(target, source, settings, refs) as MergeTwo<T, S>;
+    return mergeMap(target, source, settings, refs) as Merge<T, S>;
   }
 
   // Set
   if (target instanceof Set && source instanceof Set) {
-    return mergeSet(target, source, settings, refs) as MergeTwo<T, S>;
+    return mergeSet(target, source, settings, refs) as Merge<T, S>;
   }
 
   // Fallback: unmergeable types
-  return clone(source, settings, refs) as MergeTwo<T, S>;
+  return clone(source, settings, refs) as Merge<T, S>;
 }
 
 // -----------------------------------------------------------------------------
