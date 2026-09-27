@@ -1,5 +1,6 @@
 // node_modules/bunshin-clone/dist/index.js
 var EMPTY_OPTIONS = {};
+var { hasOwnProperty: HAS_OWN, propertyIsEnumerable: IS_ENUMERABLE } = Object.prototype;
 function bunshinClone(value, options = EMPTY_OPTIONS, refs = /* @__PURE__ */ new WeakMap()) {
   return clone(value, resolveOptions(options), refs);
 }
@@ -7,13 +8,19 @@ function clone(value, settings, refs) {
   if (!isObject(value)) {
     return value;
   }
-  if (refs.has(value)) {
-    return refs.get(value);
+  const ref = refs.get(value);
+  if (ref !== void 0) {
+    return ref;
   }
   if (settings.preserveDescriptors && isPlainObject(value)) {
     return cloneWithDescriptors(value, settings, refs);
   }
   if (Array.isArray(value)) {
+    if (isShallowArray(value)) {
+      const result2 = value.slice();
+      refs.set(value, result2);
+      return result2;
+    }
     const { length } = value;
     const result = new Array(length);
     refs.set(value, result);
@@ -25,8 +32,18 @@ function clone(value, settings, refs) {
   if (isPlainObject(value)) {
     const result = Object.create(Object.getPrototypeOf(value));
     refs.set(value, result);
-    for (const key of Reflect.ownKeys(value)) {
-      if (!isUnsafeKey(key) && Object.prototype.propertyIsEnumerable.call(value, key)) {
+    if (!settings.preserveSymbolKeys) {
+      for (const key in value) {
+        if (isUnsafeKey(key) || !HAS_OWN.call(value, key)) {
+          continue;
+        }
+        result[key] = clone(value[key], settings, refs);
+      }
+    } else {
+      for (const key of Reflect.ownKeys(value)) {
+        if (isUnsafeKey(key) || !IS_ENUMERABLE.call(value, key)) {
+          continue;
+        }
         result[key] = clone(value[key], settings, refs);
       }
     }
@@ -121,7 +138,8 @@ function clone(value, settings, refs) {
   return value;
 }
 function cloneBuffer(buffer, refs) {
-  if (refs.has(buffer)) {
+  const ref = refs.get(buffer);
+  if (ref !== void 0) {
     return refs.get(buffer);
   }
   const result = buffer.slice(0);
@@ -216,6 +234,14 @@ function isPlainObject(value) {
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
+function isShallowArray(array) {
+  for (let i = 0, l = array.length; i < l; i++) {
+    if (isObject(array[i])) {
+      return false;
+    }
+  }
+  return true;
+}
 function isUnsafeKey(key) {
   return typeof key === "string" && (key === "__proto__" || key === "prototype" || key === "constructor");
 }
@@ -223,8 +249,13 @@ function resolveOptions(options) {
   let {
     preserveBufferSharing = false,
     preserveDescriptors = false,
-    strictDescriptors = false
+    strictDescriptors = false,
+    preserveSymbolKeys = false
   } = options;
+  if (typeof preserveSymbolKeys !== "boolean") {
+    console.warn("Invalid preserveSymbolKeys option. Fallback: false.");
+    preserveSymbolKeys = false;
+  }
   if (typeof preserveBufferSharing !== "boolean") {
     console.warn("Invalid preserveBufferSharing option. Fallback: false.");
     preserveBufferSharing = false;
@@ -237,12 +268,17 @@ function resolveOptions(options) {
     console.warn("Invalid strictDescriptors option. Fallback: false.");
     strictDescriptors = false;
   }
-  return { preserveBufferSharing, preserveDescriptors, strictDescriptors };
+  return {
+    preserveBufferSharing,
+    preserveDescriptors,
+    preserveSymbolKeys,
+    strictDescriptors
+  };
 }
 
 // src/index.ts
 var EMPTY_OPTIONS2 = {};
-var { hasOwnProperty: HAS_OWN } = Object.prototype;
+var { hasOwnProperty: HAS_OWN2, propertyIsEnumerable: IS_ENUMERABLE2 } = Object.prototype;
 var ARRAYS = ["concat", "merge", "replace"];
 var NULLISH = ["loose", "strict", "throw"];
 function gattaiMerge(target, ...args) {
@@ -398,14 +434,22 @@ function mergePlainObject(target, source, settings, refs) {
       return;
     }
     isMaterialized = true;
-    forEachOwnKey(target, (key) => Reflect.set(result, key, target[key]));
+    forEachOwnKey(target, (key) => {
+      if (typeof key === "symbol" && !settings.preserveSymbolKeys) {
+        return;
+      }
+      Reflect.set(result, key, target[key]);
+    });
   }
   forEachOwnKey(source, (key) => {
     if (isUnsafeKey(key)) {
       return;
     }
+    if (typeof key === "symbol" && !settings.preserveSymbolKeys) {
+      return;
+    }
     const sourceValue = source[key];
-    if (!HAS_OWN.call(target, key)) {
+    if (!HAS_OWN2.call(target, key)) {
       materialize();
       Reflect.set(result, key, bunshinClone(sourceValue, settings, refs));
       return;
@@ -435,15 +479,20 @@ function mergePlainObjectFast(target, source, settings, refs) {
     }
     isMaterialized = true;
     for (const key in target) {
-      HAS_OWN.call(target, key) && Reflect.set(result, key, target[key]);
+      HAS_OWN2.call(target, key) && Reflect.set(result, key, target[key]);
+    }
+    if (settings.preserveSymbolKeys) {
+      for (const key of Object.getOwnPropertySymbols(target)) {
+        IS_ENUMERABLE2.call(target, key) && Reflect.set(result, key, target[key]);
+      }
     }
   }
   for (const key in source) {
-    if (!HAS_OWN.call(source, key) || isUnsafeKey(key)) {
+    if (!HAS_OWN2.call(source, key) || isUnsafeKey(key)) {
       continue;
     }
     const sourceValue = source[key];
-    if (!HAS_OWN.call(target, key)) {
+    if (!HAS_OWN2.call(target, key)) {
       materialize();
       Reflect.set(result, key, bunshinClone(sourceValue, settings, refs));
       continue;
@@ -461,6 +510,33 @@ function mergePlainObjectFast(target, source, settings, refs) {
     if (!isSame(mergedValue, targetValue)) {
       materialize();
       Reflect.set(result, key, mergedValue);
+    }
+  }
+  if (settings.preserveSymbolKeys) {
+    for (const key of Object.getOwnPropertySymbols(source)) {
+      if (!IS_ENUMERABLE2.call(source, key)) {
+        continue;
+      }
+      const sourceValue = source[key];
+      if (!HAS_OWN2.call(target, key)) {
+        materialize();
+        Reflect.set(result, key, bunshinClone(sourceValue, settings, refs));
+        continue;
+      }
+      const targetValue = target[key];
+      if (isSame(targetValue, sourceValue)) {
+        continue;
+      }
+      if (!isObject(sourceValue) || !isObject(targetValue)) {
+        materialize();
+        Reflect.set(result, key, sourceValue);
+        continue;
+      }
+      const mergedValue = merge(targetValue, sourceValue, settings, refs);
+      if (!isSame(mergedValue, targetValue)) {
+        materialize();
+        Reflect.set(result, key, mergedValue);
+      }
     }
   }
   if (!isMaterialized && !state.referenced) {
@@ -559,7 +635,7 @@ function isGattaiMergeOptions(value) {
     return true;
   }
   return keys.every(
-    (key) => key === "arrays" || key === "nullish" || key === "preserveDescriptors" || key === "strictDescriptors"
+    (key) => key === "arrays" || key === "nullish" || key === "preserveDescriptors" || key === "preserveSymbolKeys" || key === "strictDescriptors"
   );
 }
 function isObjectPrototype(value) {
@@ -568,19 +644,12 @@ function isObjectPrototype(value) {
 function isSame(a, b) {
   return a === b || a !== a && b !== b;
 }
-function isShallowArray(array) {
-  for (let i = 0, l = array.length; i < l; i++) {
-    if (isObject(array[i])) {
-      return false;
-    }
-  }
-  return true;
-}
 function resolveOptions2(options) {
   let {
     arrays = "replace",
     nullish = "loose",
     preserveDescriptors = false,
+    preserveSymbolKeys = false,
     strictDescriptors = false
   } = options;
   let hasError = false;
@@ -605,11 +674,21 @@ function resolveOptions2(options) {
     console.warn("Invalid preserveDescriptors option. Fallback: false.");
     preserveDescriptors = false;
   }
+  if (typeof preserveSymbolKeys !== "boolean") {
+    console.warn("Invalid preserveSymbolKeys option. Fallback: false.");
+    preserveSymbolKeys = false;
+  }
   if (typeof strictDescriptors !== "boolean") {
     console.warn("Invalid strictDescriptors option. Fallback: false.");
     strictDescriptors = false;
   }
-  return { arrays, nullish, preserveDescriptors, strictDescriptors };
+  return {
+    arrays,
+    nullish,
+    preserveDescriptors,
+    preserveSymbolKeys,
+    strictDescriptors
+  };
 }
 
 export { gattaiMerge };

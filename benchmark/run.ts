@@ -1,10 +1,22 @@
-import { Bench } from 'tinybench';
+/*
 
-import { gattaiMerge } from 'gattai-merge';
-import merge from 'lodash.merge';
+# Install
+npm i tsx tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+
+# Run
+npx tsx run.ts
+
+# Cleanup
+npm un tsx tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+
+*/
+
 import deepmerge from 'deepmerge';
 import { deepmerge as deepmergeTs } from 'deepmerge-ts';
+import { gattaiMerge } from 'gattai-merge';
 import { produce } from 'immer';
+import merge from 'lodash.merge';
+import { Bench } from 'tinybench';
 
 let sink: any;
 
@@ -12,13 +24,28 @@ let sink: any;
 // 共通表示
 // --------------------
 
-function print(bench: Bench) {
+function print(bench: Bench): void {
   console.table(
-    bench.tasks.map((t) => ({
-      name: t.name,
-      'ops/sec': t.result ? Math.round(t.result.throughput.mean) : 'FAILED',
-      '±%': t.result ? t.result.throughput.rme.toFixed(2) : '-',
-    })),
+    bench.tasks.map((task) => {
+      const { result } = task;
+
+      if (
+        result.state !== 'completed' &&
+        result.state !== 'aborted-with-statistics'
+      ) {
+        return {
+          name: task.name,
+          'ops/sec': 'FAILED',
+          '±%': '-',
+        };
+      }
+
+      return {
+        name: task.name,
+        'ops/sec': Math.round(result.throughput.mean).toLocaleString(),
+        '±%': result.throughput.rme.toFixed(2),
+      };
+    }),
   );
 }
 
@@ -147,8 +174,8 @@ const setB = new Set([2, 3]);
 // descriptor
 const descA: any = {};
 Object.defineProperty(descA, 'a', {
-  value: 1,
   enumerable: false,
+  value: 1,
 });
 const descB = { a: 2 };
 

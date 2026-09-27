@@ -38,6 +38,7 @@ interface GattaiMergeOptions {
   arrays: 'concat' | 'merge' | 'replace' | ArrayMergeFunction; // default: 'replace'
   nullish: 'loose' | 'strict' | 'throw';                       // default: 'loose'
   preserveDescriptors: boolean;                                // default: false
+  preserveSymbolKeys: boolean;                                 // default: false
   strictDescriptors: boolean;                                  // default: false
 }
 ```
@@ -67,6 +68,10 @@ interface GattaiMergeOptions {
 ### `preserveDescriptors`
 
 If `true`, preserves property descriptors (getters/setters, etc.).
+
+### `preserveSymbolKeys`
+
+If `true`, preserves symbol keys (slower).
 
 ### `strictDescriptors`
 

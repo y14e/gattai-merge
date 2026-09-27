@@ -7,6 +7,7 @@ import {
   forEachOwnKey,
   isObject,
   isPlainObject,
+  isShallowArray,
   isUnsafeKey,
 } from 'bunshin-clone';
 
@@ -18,6 +19,7 @@ export interface GattaiMergeOptions {
   arrays: Arrays;
   nullish: Nullish;
   preserveDescriptors: boolean;
+  preserveSymbolKeys: boolean;
   strictDescriptors: boolean;
 }
 
@@ -157,7 +159,8 @@ type MergePlainObjectWithOptions<T, U, O> = Prettify<
 // -----------------------------------------------------------------------------
 
 const EMPTY_OPTIONS = {};
-const { hasOwnProperty: HAS_OWN } = Object.prototype;
+const { hasOwnProperty: HAS_OWN, propertyIsEnumerable: IS_ENUMERABLE } =
+  Object.prototype;
 const ARRAYS = ['concat', 'merge', 'replace'] as const;
 const NULLISH = ['loose', 'strict', 'throw'] as const;
 
@@ -454,11 +457,21 @@ function mergePlainObject<T extends PlainObject, U extends PlainObject>(
     }
 
     isMaterialized = true;
-    forEachOwnKey(target, (key) => Reflect.set(result, key, target[key]));
+    forEachOwnKey(target, (key) => {
+      if (typeof key === 'symbol' && !settings.preserveSymbolKeys) {
+        return;
+      }
+
+      Reflect.set(result, key, target[key]);
+    });
   }
 
   forEachOwnKey(source, (key) => {
     if (isUnsafeKey(key)) {
+      return;
+    }
+
+    if (typeof key === 'symbol' && !settings.preserveSymbolKeys) {
       return;
     }
 
@@ -509,6 +522,13 @@ function mergePlainObjectFast<T extends PlainObject, U extends PlainObject>(
     for (const key in target) {
       HAS_OWN.call(target, key) && Reflect.set(result, key, target[key]);
     }
+
+    if (settings.preserveSymbolKeys) {
+      for (const key of Object.getOwnPropertySymbols(target)) {
+        IS_ENUMERABLE.call(target, key) &&
+          Reflect.set(result, key, target[key]);
+      }
+    }
   }
 
   for (const key in source) {
@@ -541,6 +561,44 @@ function mergePlainObjectFast<T extends PlainObject, U extends PlainObject>(
     if (!isSame(mergedValue, targetValue)) {
       materialize();
       Reflect.set(result, key, mergedValue);
+    }
+  }
+
+  // Symbol keys are opt-in (preserveSymbolKeys) and handled as a separate,
+  // small pass so the default for-in loop above stays exactly as cheap as
+  // before for the common (no-symbols) case.
+  if (settings.preserveSymbolKeys) {
+    for (const key of Object.getOwnPropertySymbols(source)) {
+      if (!IS_ENUMERABLE.call(source, key)) {
+        continue;
+      }
+
+      const sourceValue = source[key];
+
+      if (!HAS_OWN.call(target, key)) {
+        materialize();
+        Reflect.set(result, key, clone(sourceValue, settings, refs));
+        continue;
+      }
+
+      const targetValue = target[key];
+
+      if (isSame(targetValue, sourceValue)) {
+        continue;
+      }
+
+      if (!isObject(sourceValue) || !isObject(targetValue)) {
+        materialize();
+        Reflect.set(result, key, sourceValue);
+        continue;
+      }
+
+      const mergedValue = merge(targetValue, sourceValue, settings, refs);
+
+      if (!isSame(mergedValue, targetValue)) {
+        materialize();
+        Reflect.set(result, key, mergedValue);
+      }
     }
   }
 
@@ -709,6 +767,7 @@ function isGattaiMergeOptions(value: unknown): boolean {
       key === 'arrays' ||
       key === 'nullish' ||
       key === 'preserveDescriptors' ||
+      key === 'preserveSymbolKeys' ||
       key === 'strictDescriptors',
   );
 }
@@ -722,16 +781,6 @@ function isSame(a: unknown, b: unknown): boolean {
   return a === b || (a !== a && b !== b);
 }
 
-function isShallowArray(array: unknown[]): boolean {
-  for (let i = 0, l = array.length; i < l; i++) {
-    if (isObject(array[i])) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 function resolveOptions(
   options: Partial<GattaiMergeOptions>,
 ): GattaiMergeOptions {
@@ -739,6 +788,7 @@ function resolveOptions(
     arrays = 'replace',
     nullish = 'loose',
     preserveDescriptors = false,
+    preserveSymbolKeys = false,
     strictDescriptors = false,
   } = options;
 
@@ -771,10 +821,21 @@ function resolveOptions(
     preserveDescriptors = false;
   }
 
+  if (typeof preserveSymbolKeys !== 'boolean') {
+    console.warn('Invalid preserveSymbolKeys option. Fallback: false.');
+    preserveSymbolKeys = false;
+  }
+
   if (typeof strictDescriptors !== 'boolean') {
     console.warn('Invalid strictDescriptors option. Fallback: false.');
     strictDescriptors = false;
   }
 
-  return { arrays, nullish, preserveDescriptors, strictDescriptors };
+  return {
+    arrays,
+    nullish,
+    preserveDescriptors,
+    preserveSymbolKeys,
+    strictDescriptors,
+  };
 }
