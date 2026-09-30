@@ -1,13 +1,13 @@
 /*
 
 # Install
-npm i tsx tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+npm i tsx tinybench gattai-merge-npm@npm:gattai-merge lodash.merge deepmerge deepmerge-ts immer
 
 # Run
 npx tsx run.ts
 
 # Cleanup
-npm un tsx tinybench gattai-merge lodash.merge deepmerge deepmerge-ts immer
+npm un tsx tinybench gattai-merge-npm gattai-merge lodash.merge deepmerge deepmerge-ts immer
 
 */
 
@@ -17,6 +17,7 @@ import { gattaiMerge } from 'gattai-merge';
 import { produce } from 'immer';
 import merge from 'lodash.merge';
 import { Bench } from 'tinybench';
+import { gattaiMerge as gattaiMergeDev } from '../dist/index.js';
 
 let sink: any;
 
@@ -62,6 +63,9 @@ async function run(name: string, a: any, b: any, opts?: any) {
   });
 
   bench
+    .add('gattai-merge (dev)', () => {
+      sink = gattaiMergeDev(a, b, opts);
+    })
     .add('gattai-merge', () => {
       sink = gattaiMerge(a, b, opts);
     })
@@ -96,6 +100,9 @@ async function runGattaiOnly(name: string, a: any, b: any, opts?: any) {
     warmupTime: 200,
   });
 
+  bench.add('gattai-merge (dev)', () => {
+    sink = gattaiMergeDev(a, b, opts);
+  });
   bench.add('gattai-merge', () => {
     sink = gattaiMerge(a, b, opts);
   });
@@ -115,6 +122,9 @@ async function runDescriptor(name: string, a: any, b: any) {
     iterations: 100, // ←ここ重要（時間ベースNG）
   });
 
+  bench.add('gattai-merge (dev)', () => {
+    sink = gattaiMergeDev(a, b, { preserveDescriptors: true });
+  });
   bench.add('gattai-merge', () => {
     sink = gattaiMerge(a, b, { preserveDescriptors: true });
   });

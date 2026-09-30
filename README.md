@@ -23,12 +23,12 @@ import { gattaiMerge } from 'https://esm.unpkg.com/gattai-merge@<x.x.x>';
 ## 📦 APIs
 
 ```ts
-gattaiMerge<T, U>(target, ...sources, options)
-// => Merge<T, U>
+gattaiMerge<T, U, O>(target, ...sources, options)
+// => GattaiMerge<T, U, O>
 //
 // target: T
 // ...sources: U
-// options (optional): GattaiMergeOptions
+// options (optional): GattaiMergeOptions (O)
 ```
 
 ## 🪄 Options
