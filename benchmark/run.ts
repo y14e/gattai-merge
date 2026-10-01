@@ -1,7 +1,7 @@
 /*
 
 # Install
-npm i tsx tinybench gattai-merge-npm@npm:gattai-merge lodash.merge deepmerge deepmerge-ts immer
+
 
 # Run
 npx tsx run.ts
@@ -13,7 +13,7 @@ npm un tsx tinybench gattai-merge-npm gattai-merge lodash.merge deepmerge deepme
 
 import deepmerge from 'deepmerge';
 import { deepmerge as deepmergeTs } from 'deepmerge-ts';
-import { gattaiMerge } from 'gattai-merge';
+import { gattaiMerge } from 'gattai-merge-npm';
 import { produce } from 'immer';
 import merge from 'lodash.merge';
 import { Bench } from 'tinybench';

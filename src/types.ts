@@ -9,7 +9,16 @@ export interface GattaiMergeOptions {
   strictDescriptors: boolean;
 }
 
+export type GattaiMerge<T, U extends unknown[], O> = U extends [
+  infer F,
+  ...infer R,
+]
+  ? GattaiMerge<MergeWithOptions<T, F, O>, R, O>
+  : T;
+
 export type Arrays = (typeof ARRAYS)[number] | ArrayMergeFunction;
+export type Nullish = (typeof NULLISH)[number];
+
 export type Merge<T, U> = T extends object
   ? U extends object
     ? T extends unknown[]
@@ -31,13 +40,15 @@ export type Merge<T, U> = T extends object
             : U
     : U
   : U;
+
 export type MergeArray<T extends unknown[], U extends unknown[]> = [...T, ...U];
 export type MergeMap<T, U> =
   T | U extends Map<infer K, infer V> ? Map<K, V> : never;
 export type MergePlainObject<T, U> = Prettify<Omit<T, keyof U> & U>;
 export type MergeSet<T, U> = T | U extends Set<infer V> ? Set<V> : never;
-export type Nullish = (typeof NULLISH)[number];
+
 export type PlainObject = Record<PropertyKey, unknown>;
+
 type Prettify<T> = { [K in keyof T]: T[K] } & {};
 type MergeContext = {
   settings: GattaiMergeOptions;
@@ -88,12 +99,6 @@ type MergeWithOptions<T, U, O> = U extends null | undefined
               : U
       : U
     : U;
-export type GattaiMerge<T, U extends unknown[], O> = U extends [
-  infer F,
-  ...infer R,
-]
-  ? GattaiMerge<MergeWithOptions<T, F, O>, R, O>
-  : T;
 type MergeArrayWithOptions<
   T extends unknown[],
   U extends unknown[],

@@ -313,50 +313,54 @@ function mergeArray<T extends unknown[], U extends unknown[]>(
   )(target, source, createArrayContext(settings, refs)) as MergeArray<T, U>;
 }
 
-// -----------------------------------------------------------------------------
-// Map
-// -----------------------------------------------------------------------------
-
-function mergePlainObject<T extends PlainObject, U extends PlainObject>(
-  target: T,
-  source: U,
+function mergePlainObject(
+  target: Record<PropertyKey, unknown>,
+  source: Record<PropertyKey, unknown>,
   settings: GattaiMergeOptions,
   refs: Refs,
-): MergePlainObject<T, U> {
-  const result = {} as MergePlainObject<T, U>;
+) {
+  const result = Object.create(Object.getPrototypeOf(target)) as Record<
+    PropertyKey,
+    unknown
+  >;
+
   const state = refs.setPlaceholder(source, result);
+
   let isMaterialized = false;
 
-  function materialize(): void {
+  function materialize() {
     if (isMaterialized) {
       return;
     }
 
     isMaterialized = true;
-    forEachOwnKey(target, (key) => {
-      if (typeof key === 'symbol' && !settings.preserveSymbolKeys) {
-        return;
-      }
 
+    for (const key of Object.keys(target)) {
       Reflect.set(result, key, target[key]);
-    });
-  }
-
-  forEachOwnKey(source, (key) => {
-    if (isUnsafeKey(key)) {
-      return;
     }
 
-    if (typeof key === 'symbol' && !settings.preserveSymbolKeys) {
-      return;
+    if (settings.preserveSymbolKeys) {
+      for (const key of Object.getOwnPropertySymbols(target)) {
+        if (Object.prototype.propertyIsEnumerable.call(target, key)) {
+          Reflect.set(result, key, target[key]);
+        }
+      }
+    }
+  }
+
+  for (const key of Object.keys(source)) {
+    if (isUnsafeKey(key)) {
+      continue;
     }
 
     const sourceValue = source[key];
 
     if (!Object.hasOwn(target, key)) {
       materialize();
+
       Reflect.set(result, key, clone(sourceValue, settings, refs));
-      return;
+
+      continue;
     }
 
     const targetValue = target[key];
@@ -366,81 +370,9 @@ function mergePlainObject<T extends PlainObject, U extends PlainObject>(
       materialize();
       Reflect.set(result, key, mergedValue);
     }
-  });
-
-  if (!isMaterialized && !state.referenced) {
-    refs.resolve(source, target); // [Refs]
-    return target as MergePlainObject<T, U>;
   }
 
-  materialize();
-  refs.resolve(source, result); // [Refs]
-  return result;
-}
-
-function mergePlainObjectFast<T extends PlainObject, U extends PlainObject>(
-  target: T,
-  source: U,
-  settings: GattaiMergeOptions,
-  refs: Refs,
-): MergePlainObject<T, U> {
-  const result = {} as MergePlainObject<T, U>;
-  const state = refs.setPlaceholder(source, result);
-  let isMaterialized = false;
-
-  function materialize(): void {
-    if (isMaterialized) {
-      return;
-    }
-
-    isMaterialized = true;
-
-    for (const key in target) {
-      Object.hasOwn(target, key) && Reflect.set(result, key, target[key]);
-    }
-
-    if (settings.preserveSymbolKeys) {
-      for (const key of Object.getOwnPropertySymbols(target)) {
-        Object.prototype.propertyIsEnumerable.call(target, key) &&
-          Reflect.set(result, key, target[key]);
-      }
-    }
-  }
-
-  if (!settings.preserveSymbolKeys) {
-    for (const key in source) {
-      if (isUnsafeKey(key) || !Object.hasOwn(source, key)) {
-        continue;
-      }
-
-      const sourceValue = source[key];
-
-      if (!Object.hasOwn(target, key)) {
-        materialize();
-        Reflect.set(result, key, clone(sourceValue, settings, refs));
-        continue;
-      }
-
-      const targetValue = target[key];
-
-      if (isSame(targetValue, sourceValue)) {
-        continue;
-      }
-
-      if (!isObject(sourceValue) || !isObject(targetValue)) {
-        materialize();
-        Reflect.set(result, key, sourceValue);
-        continue;
-      }
-
-      const mergedValue = merge(targetValue, sourceValue, settings, refs);
-
-      if (!isSame(mergedValue, targetValue)) {
-        materialize();
-        Reflect.set(result, key, mergedValue);
-      }
-    }
-  } else {
+  if (settings.preserveSymbolKeys) {
     for (const key of Object.getOwnPropertySymbols(source)) {
       if (!Object.prototype.propertyIsEnumerable.call(source, key)) {
         continue;
@@ -450,7 +382,115 @@ function mergePlainObjectFast<T extends PlainObject, U extends PlainObject>(
 
       if (!Object.hasOwn(target, key)) {
         materialize();
+
         Reflect.set(result, key, clone(sourceValue, settings, refs));
+
+        continue;
+      }
+
+      const targetValue = target[key];
+      const mergedValue = merge(targetValue, sourceValue, settings, refs);
+
+      if (!isSame(mergedValue, targetValue)) {
+        materialize();
+        Reflect.set(result, key, mergedValue);
+      }
+    }
+  }
+
+  if (!isMaterialized && !state.referenced) {
+    refs.resolve(source, target);
+    return target;
+  }
+
+  materialize();
+  refs.resolve(source, result);
+
+  return result;
+}
+
+function mergePlainObjectFast(
+  target: Record<PropertyKey, unknown>,
+  source: Record<PropertyKey, unknown>,
+  settings: GattaiMergeOptions,
+  refs: Refs,
+) {
+  const result: Record<PropertyKey, unknown> = {};
+  const state = refs.setPlaceholder(source, result);
+
+  let isMaterialized = false;
+
+  function materialize() {
+    if (isMaterialized) {
+      return;
+    }
+
+    isMaterialized = true;
+
+    for (const key in target) {
+      if (Object.hasOwn(target, key)) {
+        Reflect.set(result, key, target[key]);
+      }
+    }
+
+    if (settings.preserveSymbolKeys) {
+      for (const key of Object.getOwnPropertySymbols(target)) {
+        if (Object.prototype.propertyIsEnumerable.call(target, key)) {
+          Reflect.set(result, key, target[key]);
+        }
+      }
+    }
+  }
+
+  for (const key in source) {
+    if (isUnsafeKey(key) || !Object.hasOwn(source, key)) {
+      continue;
+    }
+
+    const sourceValue = source[key];
+
+    if (!Object.hasOwn(target, key)) {
+      materialize();
+
+      Reflect.set(result, key, clone(sourceValue, settings, refs));
+
+      continue;
+    }
+
+    const targetValue = target[key];
+
+    if (isSame(targetValue, sourceValue)) {
+      continue;
+    }
+
+    if (!isObject(sourceValue) || !isObject(targetValue)) {
+      materialize();
+      Reflect.set(result, key, sourceValue);
+
+      continue;
+    }
+
+    const mergedValue = merge(targetValue, sourceValue, settings, refs);
+
+    if (!isSame(mergedValue, targetValue)) {
+      materialize();
+      Reflect.set(result, key, mergedValue);
+    }
+  }
+
+  if (settings.preserveSymbolKeys) {
+    for (const key of Object.getOwnPropertySymbols(source)) {
+      if (!Object.prototype.propertyIsEnumerable.call(source, key)) {
+        continue;
+      }
+
+      const sourceValue = source[key];
+
+      if (!Object.hasOwn(target, key)) {
+        materialize();
+
+        Reflect.set(result, key, clone(sourceValue, settings, refs));
+
         continue;
       }
 
@@ -463,6 +503,7 @@ function mergePlainObjectFast<T extends PlainObject, U extends PlainObject>(
       if (!isObject(sourceValue) || !isObject(targetValue)) {
         materialize();
         Reflect.set(result, key, sourceValue);
+
         continue;
       }
 
@@ -476,12 +517,13 @@ function mergePlainObjectFast<T extends PlainObject, U extends PlainObject>(
   }
 
   if (!isMaterialized && !state.referenced) {
-    refs.resolve(source, target); // [Refs]
-    return target as MergePlainObject<T, U>;
+    refs.resolve(source, target);
+    return target;
   }
 
   materialize();
-  refs.resolve(source, result); // [Refs]
+  refs.resolve(source, result);
+
   return result;
 }
 

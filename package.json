@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "3.6.1",
+  "version": "3.6.2",
   "description": "High-performance deep merge utility with structural sharing",
   "keywords": [
     "array",
@@ -56,6 +56,10 @@
     "README.md"
   ],
   "scripts": {
+    "bench": "bun tsup & npm run bench:install & npm run bench:run & npm run bench:uninstall",
+    "bench:install": "npm i tinybench gattai-merge-npm@npm:gattai-merge lodash.merge deepmerge deepmerge-ts immer",
+    "bench:run": "node ./benchmark/run.ts",
+    "bench:uninstall": "npm un tinybench gattai-merge-npm lodash.merge deepmerge deepmerge-ts immer",
     "build": "tsup",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build"
