@@ -2,4 +2,4 @@
 dist
 node_modules
 *.log
-src/index-comment.ts
+src/v2/
