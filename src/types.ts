@@ -1,7 +1,13 @@
-import type { ARRAYS, NULLISH } from './options';
-import type { Refs } from './refs';
+import type { ARRAYS, NULLISH } from '@/options';
+import type { Refs } from '@/ref';
 
 export interface GattaiMergeOptions {
+  _clone: {
+    preserveBufferSharing: boolean;
+    preserveDescriptors: boolean;
+    preserveSymbolKeys: boolean;
+    strictDescriptors: boolean;
+  };
   arrays: Arrays;
   nullish: Nullish;
   preserveDescriptors: boolean;

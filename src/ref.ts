@@ -1,4 +1,4 @@
-export type RefState = { referenced: boolean };
+export type RefState = { wasReferenced: boolean };
 
 export class Refs extends WeakMap<object, object> {
   #states = new WeakMap<object, RefState>();
@@ -8,7 +8,7 @@ export class Refs extends WeakMap<object, object> {
     const value = super.get(key);
 
     if (state && value !== undefined) {
-      state.referenced = true;
+      state.wasReferenced = true;
     }
 
     return value;
@@ -19,8 +19,8 @@ export class Refs extends WeakMap<object, object> {
     super.set(key, value);
   }
 
-  setPlaceholder(key: object, value: object): RefState {
-    const state = { referenced: false };
+  register(key: object, value: object): RefState {
+    const state = { wasReferenced: false };
     super.set(key, value);
     this.#states.set(key, state);
     return state;

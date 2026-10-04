@@ -67,7 +67,7 @@ interface GattaiMergeOptions {
 
 ### `preserveDescriptors`
 
-If `true`, preserves property descriptors (getters/setters, etc.).
+If `true`, preserves property descriptors, including non-enumerable properties.
 
 ### `preserveSymbolKeys`
 
@@ -75,7 +75,7 @@ If `true`, preserves symbol keys (slower).
 
 ### `strictDescriptors`
 
-If `true`, throws when descriptor cannot be merged (e.g. non-configurable or non-writable).
+If `true`, throws if property descriptor cannot be copied (e.g. non-configurable or non-writable).
 
 ## 📖 Details
 

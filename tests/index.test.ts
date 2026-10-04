@@ -332,6 +332,7 @@ describe('gattaiMerge', () => {
 
     const result = gattaiMerge({}, source, {
       preserveDescriptors: true,
+      preserveSymbolKeys: true,
     });
 
     expect(Object.getOwnPropertyDescriptor(result, key)).toEqual({
