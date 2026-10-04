@@ -3,7 +3,6 @@ import {
   isObject,
   isPlainObject,
   isPrimitiveArray,
-  isUnsafeKey,
 } from 'bunshin-clone';
 import {
   isGattaiMergeOptions,
@@ -616,4 +615,11 @@ function isObjectPrototype(value: unknown): boolean {
 function isSame(a: unknown, b: unknown): boolean {
   // biome-ignore lint/suspicious/noSelfCompare: performance optimization
   return a === b || (a !== a && b !== b);
+}
+
+function isUnsafeKey(key: PropertyKey): boolean {
+  return (
+    typeof key === 'string' &&
+    (key === '__proto__' || key === 'prototype' || key === 'constructor')
+  );
 }
