@@ -14,7 +14,6 @@ npm un tsx tinybench gattai-merge-npm gattai-merge lodash.merge deepmerge deepme
 import deepmerge from 'deepmerge';
 import { deepmerge as deepmergeTs } from 'deepmerge-ts';
 import { gattaiMerge } from 'gattai-merge-npm';
-import { produce } from 'immer';
 import merge from 'lodash.merge';
 import { Bench } from 'tinybench';
 import { gattaiMerge as gattaiMergeDev } from '../dist/index.js';
@@ -58,8 +57,8 @@ async function run(name: string, a: any, b: any, opts?: any) {
   console.log(`\n=== ${name} ===`);
 
   const bench = new Bench({
-    time: 250,
-    warmupTime: 300,
+    time: 100,
+    warmupTime: 100,
   });
 
   bench
@@ -77,11 +76,6 @@ async function run(name: string, a: any, b: any, opts?: any) {
     })
     .add('deepmerge-ts', () => {
       sink = deepmergeTs(a, b);
-    })
-    .add('Immer', () => {
-      sink = produce(a, (draft) => {
-        Object.assign(draft as any, b);
-      });
     });
 
   await bench.run();
@@ -96,8 +90,8 @@ async function runGattaiOnly(name: string, a: any, b: any, opts?: any) {
   console.log(`\n=== ${name} (gattai only) ===`);
 
   const bench = new Bench({
-    time: 250,
-    warmupTime: 200,
+    time: 100,
+    warmupTime: 100,
   });
 
   bench.add('gattai-merge (dev)', () => {
@@ -119,7 +113,7 @@ async function runDescriptor(name: string, a: any, b: any) {
   console.log(`\n=== ${name} (descriptor) ===`);
 
   const bench = new Bench({
-    iterations: 100, // ←ここ重要（時間ベースNG）
+    iterations: 25, // ←ここ重要（時間ベースNG）
   });
 
   bench.add('gattai-merge (dev)', () => {
@@ -149,18 +143,18 @@ const nestedB = {
 };
 
 const largeA = Object.fromEntries(
-  Array.from({ length: 1000 }, (_, i) => [`k${i}`, { v: i }]),
+  Array.from({ length: 250 }, (_, i) => [`k${i}`, { v: i }]),
 );
 const largeB = Object.fromEntries(
-  Array.from({ length: 1000 }, (_, i) => [`k${i}`, { v: i + 1 }]),
+  Array.from({ length: 250 }, (_, i) => [`k${i}`, { v: i + 1 }]),
 );
 
 // arrays
 const arrA = [1, 2, 3, 4, 5];
 const arrB = [6, 7, 8, 9, 10];
 
-const arrLargeA = Array.from({ length: 1000 }, (_, i) => i);
-const arrLargeB = Array.from({ length: 1000 }, (_, i) => i + 1);
+const arrLargeA = Array.from({ length: 250 }, (_, i) => i);
+const arrLargeB = Array.from({ length: 250 }, (_, i) => i + 1);
 
 const mixedA = [1, { a: 1 }, 3, { b: 2 }];
 const mixedB = [2, { c: 3 }, 4, { d: 5 }];
@@ -191,10 +185,10 @@ const descB = { a: 2 };
 
 // wide
 const wideA = Object.fromEntries(
-  Array.from({ length: 100 }, (_, i) => [`k${i}`, i]),
+  Array.from({ length: 25 }, (_, i) => [`k${i}`, i]),
 );
 const wideB = Object.fromEntries(
-  Array.from({ length: 100 }, (_, i) => [`k${i}`, i + 1]),
+  Array.from({ length: 25 }, (_, i) => [`k${i}`, i + 1]),
 );
 
 // --------------------

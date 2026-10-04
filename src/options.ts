@@ -1,3 +1,4 @@
+import type { BunshinCloneOptions } from 'bunshin-clone';
 import { isPlainObject } from 'bunshin-clone';
 import type {
   ArrayMergeFunction,
@@ -87,5 +88,16 @@ export function resolveOptions(
     preserveDescriptors,
     preserveSymbolKeys,
     strictDescriptors,
+  };
+}
+
+export function resolveCloneOptions(
+  options: GattaiMergeOptions,
+): BunshinCloneOptions {
+  return {
+    preserveBufferSharing: false,
+    preserveDescriptors: options.preserveDescriptors,
+    preserveSymbolKeys: options.preserveSymbolKeys,
+    strictDescriptors: options.strictDescriptors,
   };
 }

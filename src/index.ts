@@ -1,11 +1,15 @@
 import {
-  bunshinClone as clone,
+  clone,
   isObject,
   isPlainObject,
   isPrimitiveArray,
   isUnsafeKey,
 } from 'bunshin-clone';
-import { isGattaiMergeOptions, resolveOptions } from './options';
+import {
+  isGattaiMergeOptions,
+  resolveCloneOptions,
+  resolveOptions,
+} from './options';
 import { Refs } from './refs';
 import type {
   ArrayMergeFunction,
@@ -76,17 +80,18 @@ function merge<T, U>(
   }
 
   if (target == null) {
-    return clone(source, settings, refs) as Merge<T, U>;
+    return clone(source, resolveCloneOptions(settings), refs) as Merge<T, U>;
   }
 
   // Primitive
   const isObjectSource = isObject(source);
 
   if (!isObject(target) || !isObjectSource) {
-    return (isObjectSource ? clone(source, settings, refs) : source) as Merge<
-      T,
-      U
-    >;
+    return (
+      isObjectSource
+        ? clone(source, resolveCloneOptions(settings), refs)
+        : source
+    ) as Merge<T, U>;
   }
 
   // Frozen
@@ -131,7 +136,7 @@ function merge<T, U>(
   }
 
   // Fallback: unmergeable types
-  return clone(source, settings, refs) as Merge<T, U>;
+  return clone(source, resolveCloneOptions(settings), refs) as Merge<T, U>;
 }
 
 function mergeWithDescriptors<T extends PlainObject, U extends PlainObject>(
@@ -166,7 +171,7 @@ function mergeWithDescriptors<T extends PlainObject, U extends PlainObject>(
       const mergedValue =
         targetDesc && 'value' in targetDesc
           ? merge(targetDesc.value, sourceValue, settings, refs)
-          : clone(sourceValue, settings, refs);
+          : clone(sourceValue, resolveCloneOptions(settings), refs);
       const mergedDesc: PropertyDescriptor = {
         ...sourceDesc,
         value: mergedValue,
@@ -287,7 +292,8 @@ const BUILTIN_ARRAY_MERGE_FUNCTIONS: Record<
 
 function createArrayContext(settings: GattaiMergeOptions, refs: Refs) {
   return {
-    clone: (value: unknown) => clone(value, settings, refs),
+    clone: (value: unknown) =>
+      clone(value, resolveCloneOptions(settings), refs),
     merge: (target: unknown, source: unknown) =>
       merge(target, source, settings, refs),
     refs,
@@ -361,7 +367,11 @@ function mergePlainObject<T extends PlainObject, U extends PlainObject>(
 
     if (!HAS_OWN(target, key)) {
       materialize();
-      Reflect.set(result, key, clone(sourceValue, settings, refs));
+      Reflect.set(
+        result,
+        key,
+        clone(sourceValue, resolveCloneOptions(settings), refs),
+      );
       continue;
     }
 
@@ -386,7 +396,11 @@ function mergePlainObject<T extends PlainObject, U extends PlainObject>(
 
       if (!HAS_OWN(target, key)) {
         materialize();
-        Reflect.set(result, key, clone(sourceValue, settings, refs));
+        Reflect.set(
+          result,
+          key,
+          clone(sourceValue, resolveCloneOptions(settings), refs),
+        );
         continue;
       }
 
@@ -455,7 +469,11 @@ function mergePlainObjectFast<T extends PlainObject, U extends PlainObject>(
 
     if (!HAS_OWN(target, key)) {
       materialize();
-      Reflect.set(result, key, clone(sourceValue, settings, refs));
+      Reflect.set(
+        result,
+        key,
+        clone(sourceValue, resolveCloneOptions(settings), refs),
+      );
       continue;
     }
 
@@ -491,7 +509,11 @@ function mergePlainObjectFast<T extends PlainObject, U extends PlainObject>(
 
       if (!HAS_OWN(target, key)) {
         materialize();
-        Reflect.set(result, key, clone(sourceValue, settings, refs));
+        Reflect.set(
+          result,
+          key,
+          clone(sourceValue, resolveCloneOptions(settings), refs),
+        );
         continue;
       }
 
@@ -545,7 +567,7 @@ function mergeMap<
         refs.set(source, result); // [Refs]
       }
 
-      result.set(key, clone(sourceValue, settings, refs));
+      result.set(key, clone(sourceValue, resolveCloneOptions(settings), refs));
       continue;
     }
 
@@ -576,11 +598,11 @@ function mergeSet<T extends Set<unknown>, U extends Set<unknown>>(
   const result = new Set<unknown>();
 
   for (const item of target) {
-    result.add(clone(item, settings, refs));
+    result.add(clone(item, resolveCloneOptions(settings), refs));
   }
 
   for (const item of source) {
-    result.add(clone(item, settings, refs));
+    result.add(clone(item, resolveCloneOptions(settings), refs));
   }
 
   refs.set(source, result); // [Refs]
