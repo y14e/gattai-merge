@@ -76,7 +76,7 @@ export function mergeWithDescriptors<
 
   function define(key: string | symbol) {
     const desc = updates.get(key) ?? targetDescs[key];
-    desc && defineDescriptor(result, key, desc, settings);
+    desc && Object.defineProperty(result, key, desc);
     updates.delete(key);
   }
 
@@ -91,26 +91,11 @@ export function mergeWithDescriptors<
   }
 
   for (const [key, desc] of updates) {
-    defineDescriptor(result, key, desc, settings);
+    Object.defineProperty(result, key, desc);
   }
 
   refs.resolve(source, result); // [Refs]
   return result;
-}
-
-function defineDescriptor(
-  target: PlainObject,
-  key: PropertyKey,
-  desc: PropertyDescriptor,
-  settings: GattaiMergeOptions,
-): void {
-  try {
-    Object.defineProperty(target, key, desc);
-  } catch (error) {
-    if (settings.strictDescriptors) {
-      throw error;
-    }
-  }
 }
 
 function isSameDescriptor(

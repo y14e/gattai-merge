@@ -21,13 +21,9 @@ export function isGattaiMergeOptions(value: unknown): boolean {
   }
 
   return keys.every((key) =>
-    [
-      'arrays',
-      'nullish',
-      'preserveDescriptors',
-      'preserveSymbolKeys',
-      'strictDescriptors',
-    ].includes(key),
+    ['arrays', 'nullish', 'preserveDescriptors', 'preserveSymbolKeys'].includes(
+      key,
+    ),
   );
 }
 
@@ -39,7 +35,6 @@ export function resolveOptions(
     nullish = 'loose',
     preserveDescriptors = false,
     preserveSymbolKeys = false,
-    strictDescriptors = false,
   } = options;
 
   let hasError = false;
@@ -76,22 +71,15 @@ export function resolveOptions(
     preserveSymbolKeys = false;
   }
 
-  if (typeof strictDescriptors !== 'boolean') {
-    console.warn('Invalid strictDescriptors option. Fallback: false.');
-    strictDescriptors = false;
-  }
-
   return {
     _clone: {
       preserveBufferSharing: false,
       preserveDescriptors,
       preserveSymbolKeys,
-      strictDescriptors,
     },
     arrays,
     nullish,
     preserveDescriptors,
     preserveSymbolKeys,
-    strictDescriptors,
   };
 }

@@ -6,13 +6,11 @@ export interface GattaiMergeOptions {
     preserveBufferSharing: boolean;
     preserveDescriptors: boolean;
     preserveSymbolKeys: boolean;
-    strictDescriptors: boolean;
   };
   arrays: Arrays;
   nullish: Nullish;
   preserveDescriptors: boolean;
   preserveSymbolKeys: boolean;
-  strictDescriptors: boolean;
 }
 
 export type GattaiMerge<T, U extends unknown[], O> = U extends [

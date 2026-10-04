@@ -112,3 +112,5 @@ export function merge<T, U>(
   // Fallback: unmergeable types
   return clone(source, settings._clone, refs) as Merge<T, U>;
 }
+
+export type { GattaiMergeOptions };
