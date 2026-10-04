@@ -39,7 +39,6 @@ interface GattaiMergeOptions {
   nullish: 'loose' | 'strict' | 'throw';                       // default: 'loose'
   preserveDescriptors: boolean;                                // default: false
   preserveSymbolKeys: boolean;                                 // default: false
-  strictDescriptors: boolean;                                  // default: false
 }
 ```
 
