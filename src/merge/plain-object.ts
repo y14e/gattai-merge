@@ -1,8 +1,5 @@
-import {
-  clone,
-  OWN_ENUM_STRING_KEYS,
-  OWN_ENUM_SYMBOL_KEYS,
-} from 'bunshin-clone';
+import { OWN_ENUM_STRING_KEYS, OWN_ENUM_SYMBOL_KEYS } from '@y14e/own';
+import { clone } from 'bunshin-clone';
 import { merge } from '@/index';
 import type { Refs } from '@/ref';
 import type {

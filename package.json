@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "High-performance deep merge utility with structural sharing",
   "keywords": [
     "array",
@@ -64,6 +64,10 @@
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
+  "dependencies": {
+    "@y14e/own": "^1.0.0",
+    "bunshin-clone": "^2.0.0"
+  },
   "devDependencies": {
     "bun-types": "latest",
     "tsup": "^8.0.0",
@@ -74,8 +78,5 @@
   },
   "allowScripts": {
     "esbuild": true
-  },
-  "dependencies": {
-    "bunshin-clone": "^1.9.2"
   }
 }
