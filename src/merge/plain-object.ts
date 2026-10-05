@@ -1,4 +1,4 @@
-import { OWN_ENUM_STRING_KEYS, OWN_ENUM_SYMBOL_KEYS } from '@y14e/own';
+import { OWN_ENUM_KEYS } from '@y14e/own';
 import { clone } from 'bunshin-clone';
 import { merge } from '@/index';
 import type { Refs } from '@/ref';
@@ -18,9 +18,21 @@ export function mergePlainObject<T extends PlainObject, U extends PlainObject>(
     Object.getPrototypeOf(target),
   );
   const state = refs.register(source, result);
-  let isFinalized = false;
+  let isCopied = false;
 
-  function process(key: string | symbol) {
+  function copy() {
+    if (isCopied) {
+      return;
+    }
+
+    isCopied = true;
+
+    for (const key of OWN_ENUM_KEYS(target, settings.preserveSymbolKeys)) {
+      Reflect.set(result, key, target[key]);
+    }
+  }
+
+  for (const key of OWN_ENUM_KEYS(source, settings.preserveSymbolKeys)) {
     const sourceValue = source[key];
 
     if (Object.hasOwn(target, key)) {
@@ -28,51 +40,23 @@ export function mergePlainObject<T extends PlainObject, U extends PlainObject>(
       const mergedValue = merge(targetValue, sourceValue, settings, refs);
 
       if (!Object.is(mergedValue, targetValue)) {
-        finalize();
+        copy();
         Reflect.set(result, key, mergedValue);
       }
 
-      return;
+      continue;
     }
 
-    finalize();
+    copy();
     Reflect.set(result, key, clone(sourceValue, settings._clone, refs));
   }
 
-  function finalize() {
-    if (isFinalized) {
-      return;
-    }
-
-    isFinalized = true;
-
-    for (const key of OWN_ENUM_STRING_KEYS(target)) {
-      Reflect.set(result, key, target[key]);
-    }
-
-    if (settings.preserveSymbolKeys) {
-      for (const key of OWN_ENUM_SYMBOL_KEYS(target)) {
-        Reflect.set(result, key, target[key]);
-      }
-    }
-  }
-
-  for (const key of OWN_ENUM_STRING_KEYS(source)) {
-    process(key);
-  }
-
-  if (settings.preserveSymbolKeys) {
-    for (const key of OWN_ENUM_SYMBOL_KEYS(source)) {
-      process(key);
-    }
-  }
-
-  if (!isFinalized && !state.wasReferenced) {
+  if (!isCopied && !state.wasReferenced) {
     refs.resolve(source, target);
     return target as MergePlainObject<T, U>;
   }
 
-  finalize();
+  copy();
   refs.resolve(source, result);
   return result;
 }

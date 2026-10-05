@@ -1,4 +1,4 @@
-import { OWN_DESCS, OWN_STRING_KEYS, OWN_SYMBOL_KEYS } from '@y14e/own';
+import { OWN_DESCS, OWN_KEYS } from '@y14e/own';
 import { clone } from 'bunshin-clone';
 import { merge } from '@/index';
 import type { Refs } from '@/ref';
@@ -23,12 +23,12 @@ export function mergeWithDescriptors<
   const state = refs.register(source, result);
   const targetDescs = OWN_DESCS(target);
   const sourceDescs = OWN_DESCS(source);
-  const updates = new Map<PropertyKey, PropertyDescriptor>();
+  const changes = new Map<PropertyKey, PropertyDescriptor>();
 
-  function process(key: PropertyKey) {
+  for (const key of OWN_KEYS(sourceDescs, settings.preserveSymbolKeys)) {
     const sourceDesc = sourceDescs[key];
     if (!sourceDesc) {
-      return;
+      continue;
     }
 
     const targetDesc = targetDescs[key];
@@ -45,52 +45,32 @@ export function mergeWithDescriptors<
       };
 
       if (targetDesc && isSameDescriptor(targetDesc, mergedDesc)) {
-        return;
+        continue;
       }
 
-      updates.set(key, mergedDesc);
-      return;
+      changes.set(key, mergedDesc);
+      continue;
     }
 
     if (targetDesc && isSameDescriptor(targetDesc, sourceDesc)) {
-      return;
+      continue;
     }
 
-    updates.set(key, sourceDesc);
+    changes.set(key, sourceDesc);
   }
 
-  for (const key of OWN_STRING_KEYS(sourceDescs)) {
-    process(key);
-  }
-
-  if (settings.preserveSymbolKeys) {
-    for (const key of OWN_SYMBOL_KEYS(sourceDescs)) {
-      process(key);
-    }
-  }
-
-  if (!updates.size && !state.wasReferenced) {
+  if (!changes.size && !state.wasReferenced) {
     refs.resolve(source, target); // [Refs]
     return target as MergePlainObject<T, U>;
   }
 
-  function define(key: string | symbol) {
-    const desc = updates.get(key) ?? targetDescs[key];
+  for (const key of OWN_KEYS(targetDescs, settings.preserveSymbolKeys)) {
+    const desc = changes.get(key) ?? targetDescs[key];
     desc && Object.defineProperty(result, key, desc);
-    updates.delete(key);
+    changes.delete(key);
   }
 
-  for (const key of OWN_STRING_KEYS(targetDescs)) {
-    define(key);
-  }
-
-  if (settings.preserveSymbolKeys) {
-    for (const key of OWN_SYMBOL_KEYS(targetDescs)) {
-      define(key);
-    }
-  }
-
-  for (const [key, desc] of updates) {
+  for (const [key, desc] of changes) {
     Object.defineProperty(result, key, desc);
   }
 
