@@ -1,4 +1,4 @@
-import { OWN_DESCS, OWN_KEYS } from '@y14e/own';
+import { OWN_DESCS, OWN_ENUM_KEYS, OWN_ENUM_STRING_KEYS } from '@y14e/own';
 import { clone } from 'bunshin-clone';
 import { merge } from '@/index';
 import type { Refs } from '@/ref';
@@ -21,11 +21,14 @@ export function mergeWithDescriptors<
     Object.getPrototypeOf(target),
   );
   const state = refs.register(source, result);
+  const ownKeys = !settings.preserveSymbolKeys
+    ? OWN_ENUM_STRING_KEYS
+    : OWN_ENUM_KEYS;
   const targetDescs = OWN_DESCS(target);
   const sourceDescs = OWN_DESCS(source);
   const changes = new Map<PropertyKey, PropertyDescriptor>();
 
-  for (const key of OWN_KEYS(sourceDescs, settings.preserveSymbolKeys)) {
+  for (const key of ownKeys(sourceDescs)) {
     const sourceDesc = sourceDescs[key];
     if (!sourceDesc) {
       continue;
@@ -64,7 +67,7 @@ export function mergeWithDescriptors<
     return target as MergePlainObject<T, U>;
   }
 
-  for (const key of OWN_KEYS(targetDescs, settings.preserveSymbolKeys)) {
+  for (const key of ownKeys(targetDescs)) {
     const desc = changes.get(key) ?? targetDescs[key];
     desc && Object.defineProperty(result, key, desc);
     changes.delete(key);

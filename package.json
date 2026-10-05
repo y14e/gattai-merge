@@ -1,6 +1,6 @@
 {
   "name": "gattai-merge",
-  "version": "4.0.3",
+  "version": "4.0.4",
   "description": "High-performance deep merge utility with structural sharing",
   "keywords": [
     "array",
@@ -76,7 +76,7 @@
     "esbuild": true
   },
   "dependencies": {
-    "@y14e/own": "^1.0.2",
-    "bunshin-clone": "^2.0.2"
+    "@y14e/own": "^1.0.3",
+    "bunshin-clone": "^2.0.4"
   }
 }
