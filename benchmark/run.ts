@@ -1,22 +1,9 @@
-/*
-
-# Install
-
-
-# Run
-npx tsx run.ts
-
-# Cleanup
-npm un tsx tinybench gattai-merge-npm gattai-merge lodash.merge deepmerge deepmerge-ts immer
-
-*/
-
 import deepmerge from 'deepmerge';
 import { deepmerge as deepmergeTs } from 'deepmerge-ts';
 import { gattaiMerge } from 'gattai-merge-npm';
 import merge from 'lodash.merge';
 import { Bench } from 'tinybench';
-import { gattaiMerge as gattaiMergeDev } from '../dist/index.js';
+import { gattaiMerge as gattaiMergeDev } from '../dist/index.bundle.js';
 
 let sink: any;
 
